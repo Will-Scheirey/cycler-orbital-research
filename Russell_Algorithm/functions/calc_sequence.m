@@ -1,8 +1,8 @@
-function [v_inf_minus, deltas, v_inf_local] = calc_sequence(vd, va, h, s, v_e_dep, v_e_arr)
+function [v_inf_minus, deltas, h_all] = calc_sequence(vd, va, h, s, v_e_dep, v_e_arr)
 
 v_inf_minus = [];
-v_inf_local = [];
 deltas = [];
+h_all = [];
 
 [phi_fr, phi_gr] = calc_phi(vd, va, v_e_dep, v_e_arr);
 
@@ -76,27 +76,21 @@ if fj == 1
 
     [vx1, vy1, vz1] = sph2cart(0, phi_gr, v_inf_mag);
     v_inf_minus = {[vx1; vy1; vz1]};
-    v_global = v_inf_minus{1};
-    % v_global = C * [vx1;vy1;vz1];
-
-    v_inf_local = {v_global, v_global};
-    v_inf_local{2}(1) = -v_inf_local{2}(1);
     return
 end
 
 if fj == 2
-    [vx1, vy1, vz1] = sph2cart(-0,      phi_gr, v_inf_mag);
-    [vx2, vy2, vz2] = sph2cart(-pi/2,   phi_gr, v_inf_mag);
+    [vx1, vy1, vz1] = sph2cart(0,      phi_gr, v_inf_mag);
+    [vx2, vy2, vz2] = sph2cart(pi/2,   phi_fr, v_inf_mag);
 
     v_inf_minus = cell(2,1);
     v_inf_minus{1} = C * [vx1; vy1; vz1];
     v_inf_minus{2} = C * [vx2; vy2; vz2];
+    v_inf_minus{3} = C * -[vx1; vy1; vz1];
 
     deltas = [delta_minimax, delta_minimax];
     return
 end
-
-v_inf_local = cell(fj+1, 1);
 
 v_inf_minus = cell(fj, 1);
 deltas = zeros(fj - 1, 1);
@@ -118,7 +112,6 @@ for k=1:fj
 
     v_global = C * [vx;vy;vz];
 
-    v_inf_local{k} = [vx; vy; vz];
     v_inf_minus{k} = v_global;
 
     if k >= 2
@@ -128,8 +121,5 @@ for k=1:fj
         deltas(k-1) = acos(dot(v_prev, v_curr) / (norm(v_prev)*norm(v_curr)));
     end
 end
-
-v_inf_local{fj+1} = v_inf_local{1};
-v_inf_local{fj+1}(1) = -v_inf_local{fj+1}(1);
 
 end

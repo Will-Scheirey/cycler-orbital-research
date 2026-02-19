@@ -1,4 +1,4 @@
-function [N_max, a_all, vd_all, va_all] = calc_multirev_lambert(r1_vec, r2_vec, mu, tof)
+function [N_max, a_all, vd_all, va_all, sol_type] = calc_multirev_lambert(r1_vec, r2_vec, mu, tof)
 
 r1 = norm(r1_vec);
 r2 = norm(r2_vec);
@@ -6,47 +6,59 @@ r2 = norm(r2_vec);
 theta = prograde_theta(r1_vec, r2_vec);
 
 N_max = calc_N_max(r1, r2, theta, tof, mu);
-theta = 2*pi - theta;
 
-a_all = nan(N_max, 2);
-vd_all = cell(N_max, 2);
-va_all = cell(N_max, 2);
+a_all = nan(N_max, 4);
+vd_all = cell(N_max, 4);
+va_all = cell(N_max, 4);
+
+sol_type = {{true, true}, {false, true}, {true, false}, {false, false}};
+
+tof_target = tof;
 
 for N = 0:N_max
-    [~, ~, s, c] = get_lambert_angles(r1, r2, N, theta, true);
-    a_m = s/2;
+    
+    [a1, vd1, va1] = calc_lambert(theta, true, true);
+    [a2, vd2, va2] = calc_lambert(theta, false, true);
+    [a3, vd3, va3] = calc_lambert(theta, true, false);
+    [a4, vd4, va4] = calc_lambert(theta, false, false);
 
-    [tof_eqn_fast, alpha_fast, beta_fast] = lambert_lagrange_eqn(r1, r2, theta, mu, N, true);
-    [tof_eqn_slow, alpha_slow, beta_slow] = lambert_lagrange_eqn(r1, r2, theta, mu, N, false);
+    a_all (N+1, 1) = a1;
+    vd_all{N+1, 1} = vd1;
+    va_all{N+1, 1} = va1;
 
-    tof_target = tof;
+    a_all (N+1, 2) = a2;
+    vd_all{N+1, 2} = vd2;
+    va_all{N+1, 2} = va2;
 
-    eqn_fast = @(a) tof_eqn_fast(a) - tof_target;
-    eqn_slow = @(a) tof_eqn_slow(a) - tof_target;
+    a_all (N+1, 3) = a3;
+    vd_all{N+1, 3} = vd3;
+    va_all{N+1, 3} = va3;
 
-    a_min = a_m*(1+1e-3);
-    a_max = 1e6*a_m;
-
-    a_fast = NaN; a_slow = NaN;
-
-    if sign(eqn_fast(a_min)) ~= sign(eqn_fast(a_max))
-        a_fast = fzero(eqn_fast, [a_min, a_max]);
-    end
-
-    if sign(eqn_slow(a_min)) ~= sign(eqn_slow(a_max))
-        a_slow = fzero(eqn_slow, [a_min, a_max]);
-    end
-
-    [vd_fast, va_fast] = calc_lambert_v(mu, a_fast, c, alpha_fast(a_fast), beta_fast(a_fast), r1_vec, r2_vec);
-    [vd_slow, va_slow] = calc_lambert_v(mu, a_slow, c, alpha_slow(a_slow), beta_slow(a_slow), r1_vec, r2_vec);
-
-    a_all (N+1, 1) = a_fast;
-    vd_all{N+1, 1} = vd_fast;
-    va_all{N+1, 1} = va_fast;
-
-    a_all (N+1, 2) = a_slow;
-    vd_all{N+1, 2} = vd_slow;
-    va_all{N+1, 2} = va_slow;
+    a_all (N+1, 4) = a4;
+    vd_all{N+1, 4} = vd4;
+    va_all{N+1, 4} = va4;
 end
+
+    function [a, vd, va] = calc_lambert(theta, fast, long)
+        
+        if long
+            theta = 2*pi - theta;
+        end
+
+        [~, ~, s, c] = get_lambert_angles(r1, r2, N, theta, fast);
+        a_m = s/2;
+        a_min = a_m*(1+1e-3);
+        a_max = 1e6*a_m;
+
+        [tof_eqn, alpha, beta] = lambert_lagrange_eqn(r1, r2, theta, mu, N, fast);
+        eqn = @(a) tof_eqn(a) - tof_target;
+        
+        a = NaN;
+        if sign(eqn(a_min)) ~= sign(eqn(a_max))
+            a = fzero(eqn, [a_min, a_max]);
+        end
+
+        [vd, va] = calc_lambert_v(mu, a, c, alpha(a), beta(a), r1_vec, r2_vec);
+    end
 
 end
