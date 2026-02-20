@@ -1,8 +1,9 @@
-function [v_inf_minus, deltas, h_all] = calc_sequence(vd, va, h, s, v_e_dep, v_e_arr)
+function [v_inf_minus, deltas, hi, dt_years] = calc_sequence(vd, va, h, s, v_e_dep, v_e_arr)
 
 v_inf_minus = [];
 deltas = [];
-h_all = [];
+hi = [];
+dt_years = [];
 
 [phi_fr, phi_gr] = calc_phi(vd, va, v_e_dep, v_e_arr);
 
@@ -12,13 +13,7 @@ end
 
 delta_c = pi - 2 * abs(phi_gr);
 
-hj = floor(h/s);
-
-if mod(hj, 2) == 0
-    fj = hj/2 + 1;
-else
-    fj = 2 * floor(hj/4 + 1);
-end
+[fj, dt_years] = russell_table2_fcn(h);
 
 lambda_a = pi / (fj - 2);
 
@@ -42,14 +37,14 @@ elseif fj > 2
     end
 end
 
-h_all = zeros(s, 1);
+hi = zeros(s, 1);
 
 if delta_c > delta_minimax
-    h_all(1:s-1) = floor(h/s);
-    h_all(s)   = floor(h/s) + mod(h, s);
+    hi(1:s-1) = floor(h/s);
+    hi(s)   = floor(h/s) + mod(h, s);
 else
-    h_all(1) = h;
-    h_all(2:s) = 0;
+    hi(1) = h;
+    hi(2:s) = 0;
 end
 
 % Assemble reference frame
@@ -92,7 +87,7 @@ if fj == 2
     return
 end
 
-v_inf_minus = cell(fj, 1);
+v_inf_minus = cell(fj+1, 1);
 deltas = zeros(fj - 1, 1);
 
 for k=1:fj
@@ -110,6 +105,9 @@ for k=1:fj
 
     [vx, vy, vz] = sph2cart(-lon, lat, v_inf_mag);
 
+    if k == 1
+        vd0 = [vx; vy; vz];
+    end
     v_global = C * [vx;vy;vz];
 
     v_inf_minus{k} = v_global;
@@ -121,5 +119,7 @@ for k=1:fj
         deltas(k-1) = acos(dot(v_prev, v_curr) / (norm(v_prev)*norm(v_curr)));
     end
 end
+
+v_inf_minus{fj+1} = C * -vd0;
 
 end

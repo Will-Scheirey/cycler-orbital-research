@@ -1,6 +1,7 @@
 % mu = 132712000000;
 
 [mu, mu_b1, mu_b2, r_b1, r_b2, T_1, T_2, tau, angle_turn] = get_earth_mars_params();
+angle_turn = -angle_turn;
 
 sec2day = 1 / (3600 * 24);
 sec2year = sec2day / 365;
