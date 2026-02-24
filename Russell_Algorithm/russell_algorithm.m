@@ -30,17 +30,18 @@ for i = 1 : N_max+1
         vd = vd_all{i, z};
         va = va_all{i, z};
     
-        [v_inf_minus, deltas, h_all, dt_years] = calc_sequence(vd, va, h, s, v0, v1);
-        if isempty(v_inf_minus)
-            continue
-        end
+        [v_inf_minus_all, deltas_all, hi, dt_years_all] = calc_sequence(vd, va, h, s, v0, v1);
+        if isempty(v_inf_minus_all), continue; end
+        if isempty(v_inf_minus_all{1}), continue; end
+
+        v_inf = norm(v_inf_minus_all{1}{1});
 
         ra = ra_from_rv(r0, vd, mu);
-        [AR, TR, feasible, max_delta] = is_feasible(a, rp_min, mu_b1, r_b2, norm(v_inf_minus{1}), deltas, TR_min, AR_min, ra);
+        [AR, TR, feasible, max_delta] = is_feasible(a, rp_min, mu_b1, r_b2, v_inf, deltas_all, TR_min, AR_min, ra);
         sol_type = sol_type_all{z};
 
         struct_temp = struct( ...
-            'v_inf', norm(v_inf_minus{1}), ...
+            'v_inf', v_inf, ...
             'AR', AR, ...
             'TR', TR, ...
             'feasible', feasible, ...
@@ -50,11 +51,11 @@ for i = 1 : N_max+1
             'vd', vd, ...
             'fast', sol_type{1}, ...
             'long', sol_type{2}, ...
-            'h_i', h_all, ...
-            'dt_years', dt_years ...
+            'h_i', hi ...
             );
-        struct_temp.v_inf_minus = v_inf_minus;
-        struct_temp.deltas = deltas;
+        struct_temp.dt_years    = dt_years_all;
+        struct_temp.v_inf_minus = v_inf_minus_all;
+        struct_temp.deltas      = deltas_all;
 
         struct_save.(sprintf('sol_%d', z)) = struct_temp;
     end

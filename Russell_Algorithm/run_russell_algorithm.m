@@ -1,6 +1,7 @@
 clear; clc; close all
 
 load_params
+all_sol_idx = 1;
 
 for p = 1:p_max
     for h = 0:h_max
