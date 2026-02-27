@@ -1,3 +1,5 @@
+% Based on: https://ssd.jpl.nasa.gov/planets/approx_pos.html
+
 function out = planet_state_from_jd(params, planetName, JD_TDB_like)
 %PLANET_STATE_FROM_JD
 % Uses your struct fields:

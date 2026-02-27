@@ -1,5 +1,8 @@
 % Based on: https://ntrs.nasa.gov/citations/20190028464
 
+% Effectively implements sequence generator using Lambert solver, with the
+% total TOF being equal to a multiple of 3-body synodic period
+
 clear; clc; close all
 
 [mu, ~, r_b3, r_b1, r_b2] = get_circular_planets();

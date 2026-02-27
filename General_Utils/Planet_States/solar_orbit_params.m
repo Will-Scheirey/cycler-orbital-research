@@ -1,3 +1,5 @@
+% Data from: https://ssd.jpl.nasa.gov/planets/approx_pos.html
+
 function params = solar_orbit_params()
     AU = 149.6e6 * 1e3; % meters
 
