@@ -1,4 +1,6 @@
-function [V1_list, V2_list] = lambert(R1, R2, t, mu, z_lim, num_z)
+% Adapted from 'Orbital Mechanics for Engineering Students' by Howard
+% Curtis; Appendix D
+function [V1_list, V2_list] = lambert_curtis(R1, R2, t, mu, z_lim, num_z)
 %
 %{
 This function solves Lambert's problem.

@@ -1,3 +1,5 @@
+% Based on: https://doi.org/10.2514/1.1011
+
 clear; clc; close all
 
 load_params

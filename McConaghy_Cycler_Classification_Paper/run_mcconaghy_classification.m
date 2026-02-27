@@ -35,8 +35,6 @@ for i = 1:length(ns)
         plot(r_earth_sun*cos(thetas), r_earth_sun*sin(thetas), 'b', 'LineWidth', 2)
         plot(r_mars_sun*cos(thetas), r_mars_sun*sin(thetas), 'r', 'LineWidth', 2)
 
-        % plot(0, 0, '.y', 'MarkerSize', 80)
-
         set(gca, 'XTickLabel', {});
         set(gca, 'YTickLabel', {});
 

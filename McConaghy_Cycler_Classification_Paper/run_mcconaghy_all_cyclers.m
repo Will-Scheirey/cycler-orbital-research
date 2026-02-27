@@ -63,7 +63,7 @@ end
 
 axis equal
 axis padded
-title("Cycler Orbits for n=1:7")
+title(sprintf("Cycler Orbits for n=%d to %d", ns(1), ns(end)))
 
 function good = eval_transfer(R1, V1, apo_min, mu, mu0, rp_min, angle_turn)
     r1 = norm(R1);

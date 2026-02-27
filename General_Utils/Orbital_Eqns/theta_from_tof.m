@@ -23,7 +23,9 @@ if dot(r0, v0) < 0
     nu0 = 2*pi - nu0;
 end
 
-E0 = 2 * atan( sqrt((1 - e)/(1 + e)) * tan(nu0/2) );
+E0 = atan2( sqrt(1 - e^2)*sin(nu0), e + cos(nu0) );
+if E0 < 0, E0 = E0 + 2*pi; end
+
 M0 = E0 - e*sin(E0);
 
 n = sqrt(mu / a^3);
