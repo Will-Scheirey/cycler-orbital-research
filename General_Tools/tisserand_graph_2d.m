@@ -9,7 +9,7 @@ bodies = get_jupiter_moon_params();
 mu_primary = bodies.mu_primary;
 
 num_v_inf = 10;
-v_infs = linspace(1, 15, num_v_inf);
+v_infs = linspace(1, 10, num_v_inf);
 
 num_alphas = 50;
 alphas = linspace(0, 180, num_alphas);
@@ -47,6 +47,7 @@ line_width = 1;
 marker_size = 8;
 
 num_points = height(points);
+
 for i = 1:num_points
     delta_max = delta_from_rp(mu, v_infs(i), rp_min);
     alpha_step = find_closest_idx(alphas, delta_max);
@@ -70,7 +71,11 @@ for i = 1:num_points
     if floor(alpha_step) > curr_step
         plot(x_point, y_point, 'Color', color, 'Marker', '.', 'MarkerSize', marker_size, 'HandleVisibility', 'off');
     end
+
+    mid  = floor(length(x_point) / 2);
+    text(x_point(mid) + 0.1, y_point(mid) - 0.1, sprintf("%d", i))
 end
+
 end
 
 function delta = delta_from_rp(mu, v_inf, rp)
