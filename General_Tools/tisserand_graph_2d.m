@@ -11,7 +11,7 @@ mu_primary = bodies.mu_primary;
 num_v_inf = 10;
 v_infs = linspace(1, 10, num_v_inf);
 
-num_alphas = 50;
+num_alphas = 100;
 alphas = linspace(0, 180, num_alphas);
 
 name_b = fieldnames(bodies);
@@ -21,6 +21,11 @@ colors = turbo(num_bodies);
 
 figure(1)
 hold on
+
+r_min = inf;
+r_max = -inf;
+
+reference_length = r_jupiter;
 
 for idx = 1:length(name_b)
     name = name_b{idx};
@@ -32,15 +37,32 @@ for idx = 1:length(name_b)
 
     points = generate_tisserand_points(v_infs, alphas, mu_primary, body.r_primary);
     plot_tisserand(points, body.mu, body.r, v_infs, alphas, colors(idx, :), name_b{idx}, r_jupiter);
+    r_min = min(r_min, body.r_primary);
+    r_max = max(r_max, body.r_primary);
 end
+
+
+lower_rp = 1;
+upper_rp = 15; %r_min / reference_length;
+
+lower_ra = 5; %r_max / reference_length;
+upper_ra = 25;
+
+%{
+xline(r_jupiter / reference_length, '--r', 'DisplayName', 'Min Rp')
+xline(r_min / reference_length,     '--k', 'DisplayName', 'Max Rp')
+yline(r_max / reference_length,     '--k', 'DisplayName', 'Min Ra')
+%}
+line([upper_rp, upper_rp], [lower_ra, 25], 'Color', 'black', 'LineStyle', '--', 'DisplayName', 'Min Rp')
+line([0, upper_rp], [lower_ra, lower_ra], 'Color', 'black', 'LineStyle', '--', 'DisplayName', 'Min Rp')
 
 legend
 xlabel("Periapsis Radius (RJ)")
 ylabel("Apoapsis Radius (RJ")
 title("Tisserand Plots for Multiple Bodies")
 
-xlim([1, 15]);
-ylim([5, 25]);
+xlim([lower_rp, upper_rp]);
+ylim([lower_ra, upper_ra]);
 
 function plot_tisserand(points, mu, rp_min, v_infs, alphas, color, name, reference_length)
 line_width = 1;

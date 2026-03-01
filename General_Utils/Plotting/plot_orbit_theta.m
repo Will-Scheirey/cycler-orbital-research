@@ -5,8 +5,8 @@ function hPlot = plot_orbit_theta(r0, v0, mu, theta_lim, varargin)
 t0 = theta_lim(1);
 t1 = theta_lim(2);
 
-t0 = mod(t0, 2*pi);
-t1 = mod(t1, 2*pi);
+% t0 = mod(t0, 2*pi);
+% t1 = mod(t1, 2*pi);
 
 % force forward sweep (short-ish way in the forward direction)
 if t1 < t0
