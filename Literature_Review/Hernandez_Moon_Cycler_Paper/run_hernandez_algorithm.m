@@ -1,22 +1,22 @@
 clear; clc; close all;
 
 jupiter_moons = get_jupiter_moon_params();
-mu            = jupiter_moons.mu_primary;
 r_jupiter     = 69911;
+mu            = jupiter_moons.mu_primary;
 
-delta = deg2rad(5.2);
+Delta = deg2rad(5.2);
 T_syn = day2sec(7.05);
 
-a_io = jupiter_moons.io.r_primary;
-n_io = mean_motion(a_io, mu);
+n_io = (8*pi + Delta) / T_syn;
+n_eu = (4*pi + Delta) / T_syn;
+n_ga = (2*pi + Delta) / T_syn;
 
-a_eu = a_io * ((8*pi + delta) / (4*pi + delta))^(2/3);
-n_eu = mean_motion(a_eu, mu);
-
-a_ga = a_io * ((8*pi + delta) / (2*pi + delta))^(2/3);
-n_ga = mean_motion(a_ga, mu);
+a_io = (mu / n_io^2)^(1/3);
+a_eu = (mu / n_eu^2)^(1/3);
+a_ga = (mu / n_ga^2)^(1/3);
 
 r_all = [a_io, a_eu, a_ga];
+num_bodies = length(r_all);
 
 rp_min = r_jupiter; rp_max = a_io;
 ra_min = a_ga;      ra_max = inf;
@@ -26,14 +26,17 @@ T_min = orbital_period(a_min, mu);
 
 search_space = generate_search_space(T_syn, 5, T_min);
 
-num_e   = 10;
-num_phi = 10;
-phi_all = linspace(0, 2*pi, num_phi);
+num_e   = 50;
+num_phi = 75;
+phi_all = linspace(0, 4*pi, num_phi);
 
 n_syn = 1;
 r0 = a_eu;
+n0 = n_eu;
 
 n_rev_max = search_space(n_syn);
+
+flybys_all = cell(n_rev_max, num_e, num_phi);
 
 for n_rev = 1:n_rev_max
 
@@ -50,10 +53,45 @@ for n_rev = 1:n_rev_max
         for phi_idx = 1:num_phi
             phi_i = phi_all(phi_idx);
 
-            flybys_all = generate_guess_flybys(ai, e_i, phi_i, r0, mu, r_all);
+            % Guess:         [1          x 2]
+            %         One for each direction (inbound/outbound)
+            
+            % Direction:     [1          x 4]
+
+            %         Flybys, r0_vec, v0_vec, w0
+            % Flybys:        [num_bodies x 2]
+            %         Two intersections for each body
+
+            % Intersections: [1          x 4]
+            %         Body pos, sc pos, distance, tof | of/at intersection
+
+            t0   = phi_i / n0;            % epoch offset: moons at anomaly 0 when phi0=0
+            
+            guess_flybys = generate_guess_flybys(ai, e_i, phi_i, r0, mu, r_all, t0);
+
+            flybys_all{n_rev, e_idx, phi_idx} = guess_flybys;
         end
     end
 end
+
+n_idx = 1;
+e_idx = 1;
+phi_idx = 1;
+
+guess  = flybys_all{n_idx, e_idx, phi_idx};
+
+phi_i = phi_all(phi_idx);
+plot_guess(guess, a_io, a_eu, a_ga, mu, n0, r_all, phi_i)
+
+function plot_guess(guess, a_io, a_eu, a_ga, mu, n0, r_all, phi)
+num_bodies = length(r_all);
+rev1   = guess{2};
+
+guess_flybys = rev1{1};
+guess_orbit  = rev1(2:end);
+
+r0 = guess_orbit{1};
+v0 = guess_orbit{2};
 
 figure(1)
 clf
@@ -63,28 +101,62 @@ plot_orbit_circular(a_io, mu, 'DisplayName', 'Io', 'LineWidth', 2);
 plot_orbit_circular(a_eu, mu, 'DisplayName', 'Europa', 'LineWidth', 2);
 plot_orbit_circular(a_ga, mu, 'DisplayName', 'Ganymede', 'LineWidth', 2);
 
-axis equal
-legend
+plot_orbit(r0, v0, mu, 'DisplayName', 'Orbit', 'LineWidth', 1.5);
+plot(r0(1), r0(2), 'kx', 'DisplayName', 'Initial Position', 'MarkerSize', 20, 'LineWidth', 2)
+quiver(r0(1), r0(2), v0(1), v0(2), 3e4, 'k-', 'DisplayName', 'Initial Velocity', 'MarkerSize', 20, 'LineWidth', 2)
 
-function results = generate_guess_flybys(ai, ei, phi0, r0, mu, r_all)
-[r0_vec, v0_1, w0_1] = calc_orbit(ai, ei, phi0, r0, mu, true);
-[~,  v0_2, w0_2]     = calc_orbit(ai, ei, phi0, r0, mu, false);
+distances = zeros(num_bodies, 2);
+for n = 1:num_bodies
+    distances(n, 1) = guess_flybys{n, 1}{3};
+    distances(n, 2) = guess_flybys{n, 2}{3};
 
-flybys_1 = eval_orbit(r0_vec, v0_1, ai, ei, w0_1, mu, r_all);
-flybys_2 = eval_orbit(r0_vec, v0_2, ai, ei, w0_2, mu, r_all);
+    rb1 = guess_flybys{n, 1}{1};
+    rb2 = guess_flybys{n, 2}{1};
 
-results = {flybys_1, flybys_2};
+    rsc1 = guess_flybys{n, 1}{2};
+    rsc2 = guess_flybys{n, 2}{2};
 
+    p = plot(rb1(1), rb1(2), 'rx', 'DisplayName', "Intersect 1", 'MarkerSize', 20, 'LineWidth', 2);
+    if n ~= 1, p.HandleVisibility = 'off'; end
+
+    p = plot(rb2(1), rb2(2), 'bx', 'DisplayName', "Intersect 2", 'MarkerSize', 20, 'LineWidth', 2);
+    if n ~= 1, p.HandleVisibility = 'off'; end
+
+    plot(rsc1(1), rsc1(2), 'rx', 'DisplayName', sprintf("SC at Body %d Intersect 1", n), 'MarkerSize', 20, 'LineWidth', 2, 'HandleVisibility', 'off')
+    plot(rsc2(1), rsc2(2), 'bx', 'DisplayName', sprintf("SC at Body %d Intersect 2", n), 'MarkerSize', 20, 'LineWidth', 2, 'HandleVisibility', 'off')
+
+    t0         = phi / n0;
+    theta_body = mean_motion(r_all(n), mu) * t0;
+    r0 = r_all(n) * [cos(theta_body); sin(theta_body)];
+
+    p = plot(r0(1), r0(2), 'k.', 'DisplayName', 'Starting Position', 'MarkerSize', 20);
+    if n ~= 1, p.HandleVisibility = 'off'; end
 end
 
-function flybys = eval_orbit(r0, v0, ai, ei, w0, mu, r_all)
+axis equal
+legend
+end
+
+function results = generate_guess_flybys(ai, ei, phi0, r0, mu, r_all, t0)
+    [r0_vec, v0_1, w0_1] = calc_orbit(ai, ei, phi0, r0, mu, true);
+    [~,      v0_2, w0_2] = calc_orbit(ai, ei, phi0, r0, mu, false);
+
+    flybys_1 = eval_orbit(r0_vec, v0_1, ai, ei, w0_1, mu, r_all, t0);
+    flybys_2 = eval_orbit(r0_vec, v0_2, ai, ei, w0_2, mu, r_all, t0);
+
+    results = {{flybys_1, r0_vec, v0_1, w0_1}, {flybys_2, r0_vec, v0_2, w0_2}};
+end
+
+function flybys = eval_orbit(r0, v0, ai, ei, w0, mu, r_all, t0)
+
 num_b = length(r_all);
 flybys = cell(num_b, 2);
 
 for n = 1:num_b
     r_b = r_all(n);
 
-    [r_b_1, r_b_2, r_sc_1, r_sc_2, tof1, tof2] = calc_planet_pos_intersection(r0, v0, ai, ei, mu, r_b, w0);
+    [r_b_1, r_b_2, r_sc_1, r_sc_2, tof1, tof2] = ...
+        calc_planet_pos_intersection(r0, ai, ei, mu, r_b, w0, t0);
 
     dist1 = norm(r_b_1 - r_sc_1);
     dist2 = norm(r_b_2 - r_sc_2);
@@ -121,20 +193,61 @@ r0_vec = r0 * [cos(phi0 ); sin(phi0); 0];
 v0_vec = [vx; vy; 0];
 end
 
-function [r_b_1, r_b_2, r_sc_1, r_sc_2, tof_int1, tof_int2] = calc_planet_pos_intersection(r0, v0, a, e, mu, r_b, w0)
-n = mean_motion(r_b, mu);
+function [r_b_1, r_b_2, r_sc_1, r_sc_2, tof1, tof2] = ...
+    calc_planet_pos_intersection(r0_vec, a, e, mu, r_b, w0, t0)
 
-theta_sc_int1 = get_intersection(r0, v0, mu, r_b) - w0;
-tof_int1      = calc_tof(a, mu, e, theta_sc_int1);
+n_b  = mean_motion(r_b, mu);
+n_sc = sqrt(mu/a^3);
 
-theta_sc_int2 = 2*pi - theta_sc_int1;
-tof_int2      = calc_tof(a, mu, e, theta_sc_int2);
+% Initial SC angles
+phi0   = atan2(r0_vec(2), r0_vec(1));   % inertial
+theta0 = mod(phi0 - w0, 2*pi);          % true anomaly
 
-r_b_1   = r_b * [cos(n*tof_int1);    sin(n*tof_int1);    0];
-r_sc_1  = r_b * [cos(theta_sc_int1); sin(theta_sc_int1); 0];
+% Solve for intersections r(theta)=r_b
+cos_th = (a*(1 - e^2)/r_b - 1)/e;
+cos_th = max(-1, min(1, cos_th));
 
-r_b_2   = r_b * [cos(n*tof_int2); sin(n*tof_int2); 0];
-r_sc_2  = r_b * [cos(theta_sc_int2); sin(theta_sc_int2); 0];
+theta1 = acos(cos_th);
+theta2 = mod(2*pi - theta1, 2*pi);
+
+% Inertial angles for SC intersections
+phi1 = mod(w0 + theta1, 2*pi);
+phi2 = mod(w0 + theta2, 2*pi);
+
+% Time from theta0 -> theta_int (forward only)
+tof1 = tof_between_thetas(theta0, theta1, e, n_sc);
+tof2 = tof_between_thetas(theta0, theta2, e, n_sc);
+
+% Absolute times (moons start at phi=0 when t=0)
+t_abs1 = t0 + tof1;
+t_abs2 = t0 + tof2;
+
+% Positions at intersection
+r_sc_1 = r_b * [cos(phi1); sin(phi1); 0];
+r_sc_2 = r_b * [cos(phi2); sin(phi2); 0];
+
+r_b_1  = r_b * [cos(n_b*t_abs1); sin(n_b*t_abs1); 0];
+r_b_2  = r_b * [cos(n_b*t_abs2); sin(n_b*t_abs2); 0];
+
+end
+
+function dt = tof_between_thetas(theta0, theta, e, n)
+
+M0 = theta_to_M(theta0, e);
+M  = theta_to_M(theta,  e);
+
+dM = mod(M - M0, 2*pi);
+dt = dM / n;
+
+end
+
+function M = theta_to_M(theta, e)
+
+E = 2*atan( sqrt((1-e)/(1+e)) * tan(theta/2) );
+E = mod(E, 2*pi);
+
+M = mod(E - e*sin(E), 2*pi);
+
 end
 
 function out = generate_search_space(T_syn, syn_per_max, T_min)
@@ -143,8 +256,4 @@ out = zeros(syn_per_max, 1);
 for syn_per = 1:syn_per_max
     out(syn_per) = floor(T_syn * syn_per / T_min);
 end
-end
-
-function wrap2pi(ang)
-    ang = mod(ang, 2*pi);
 end

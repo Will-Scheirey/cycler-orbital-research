@@ -2,9 +2,10 @@ function data_out = get_jupiter_moon_params()
     % Parameters from: https://www.princeton.edu/~willman/planetary_systems/Sol/Jupiter/
     % AND: https://www.nasa.gov/wp-content/uploads/2009/12/moons_of_jupiter_lithograph.pdf
 
-    G = 6.674e-20;
+    G = 6.6743e-20;
 
     mu_jupiter = 1.89813e27 * G;
+    mu_jupiter = 1.266865391e8;
     
     mu_io = 8.93e22 * G;
     r_io = 1821.6;
