@@ -27,7 +27,7 @@ T_min = orbital_period(a_min, mu);
 search_space = generate_search_space(T_syn, 5, T_min);
 
 num_e   = 50;
-num_phi = 75;
+num_phi = 50;
 phi_all = linspace(0, 4*pi, num_phi);
 
 n_syn = 1;
@@ -36,7 +36,11 @@ n0 = n_eu;
 
 n_rev_max = search_space(n_syn);
 
-flybys_all = cell(n_rev_max, num_e, num_phi);
+flybys_all_pro = cell(n_rev_max, num_e, num_phi);
+flybys_all_ret = cell(n_rev_max, num_e, num_phi);
+
+costs_all_pro  = cell(n_rev_max, num_e, num_phi, 2);
+costs_all_ret  = cell(n_rev_max, num_e, num_phi, 2);
 
 for n_rev = 1:n_rev_max
 
@@ -67,25 +71,74 @@ for n_rev = 1:n_rev_max
 
             t0   = phi_i / n0;            % epoch offset: moons at anomaly 0 when phi0=0
             
-            guess_flybys = generate_guess_flybys(ai, e_i, phi_i, r0, mu, r_all, t0);
+            guess_flybys_pro = generate_guess_flybys(ai, e_i, phi_i, r0, mu, r_all, t0, false);
+            flybys_all_pro{n_rev, e_idx, phi_idx} = guess_flybys_pro;
+            costs_all_pro{n_rev, e_idx, phi_idx, 1} = cost_fcn(guess_flybys_pro, r_all, 1);
+            costs_all_pro{n_rev, e_idx, phi_idx, 2} = cost_fcn(guess_flybys_pro, r_all, 2);
 
-            flybys_all{n_rev, e_idx, phi_idx} = guess_flybys;
+            guess_flybys_ret = generate_guess_flybys(ai, e_i, phi_i, r0, mu, r_all, t0, true);
+            flybys_all_ret{n_rev, e_idx, phi_idx} = guess_flybys_ret;
+            costs_all_ret{n_rev, e_idx, phi_idx, 1} = cost_fcn(guess_flybys_ret, r_all, 1);
+            costs_all_ret{n_rev, e_idx, phi_idx, 2} = cost_fcn(guess_flybys_ret, r_all, 2);
         end
     end
 end
 
-n_idx = 1;
-e_idx = 1;
-phi_idx = 1;
+%% PLOT
 
-guess  = flybys_all{n_idx, e_idx, phi_idx};
+costs_pro = vertcat(costs_all_pro{:}) / r_jupiter;
+costs_ret = vertcat(costs_all_ret{:}) / r_jupiter;
 
-phi_i = phi_all(phi_idx);
-plot_guess(guess, a_io, a_eu, a_ga, mu, n0, r_all, phi_i)
+max_bin  = max(max(costs_pro), max(costs_ret));
+num_bins = 100;
+bins = linspace(0, max_bin, num_bins);
 
-function plot_guess(guess, a_io, a_eu, a_ga, mu, n0, r_all, phi)
+figure(1)
+clf
+histogram(costs_pro, bins, 'Normalization','percentage', 'LineStyle', 'none')
+title("Prograde")
+ylim([0, 300/num_bins])
+
+figure(2)
+clf
+histogram(costs_ret, bins, 'Normalization','percentage', 'LineStyle', 'none')
+title("Retrograde")
+ylim([0, 300/num_bins])
+
+figure(3)
+clf
+C = cell2mat(costs_all_ret);
+[globalMin, linearIdx] = min(C, [], 'all');
+[i, j, k, w] = ind2sub(size(C), linearIdx); % For a 3D array
+
+guess  = flybys_all_ret{i, j, k};
+
+phi_i = phi_all(k);
+plot_guess(guess, a_io, a_eu, a_ga, mu, n0, r_all, phi_i, w)
+
+function cost = cost_fcn(guess, r_all, direction)
+    num_bodies = length(r_all);
+    
+    direction1   = guess{direction};
+    guess_flybys = direction1{1};
+    
+    closest   = zeros(num_bodies, 1);
+    for n = 1:num_bodies
+        dist1 = guess_flybys{n, 1}{3};
+        dist2 = guess_flybys{n, 2}{3};
+
+        closest(n) = min(dist1, dist2);
+    end
+
+    cost = norm(closest, 2);
+end
+
+function plot_guess(guess, a_io, a_eu, a_ga, mu, n0, r_all, phi, w)
+if nargin < 9
+    w = 1;
+end
 num_bodies = length(r_all);
-rev1   = guess{2};
+rev1   = guess{w};
 
 guess_flybys = rev1{1};
 guess_orbit  = rev1(2:end);
@@ -93,7 +146,6 @@ guess_orbit  = rev1(2:end);
 r0 = guess_orbit{1};
 v0 = guess_orbit{2};
 
-figure(1)
 clf
 hold on
 
@@ -137,17 +189,17 @@ axis equal
 legend
 end
 
-function results = generate_guess_flybys(ai, ei, phi0, r0, mu, r_all, t0)
-    [r0_vec, v0_1, w0_1] = calc_orbit(ai, ei, phi0, r0, mu, true);
-    [~,      v0_2, w0_2] = calc_orbit(ai, ei, phi0, r0, mu, false);
+function results = generate_guess_flybys(ai, ei, phi0, r0, mu, r_all, t0, retrograde)
+    [r0_vec, v0_1, w0_1] = calc_orbit(ai, ei, phi0, r0, mu, true, retrograde);
+    [~,      v0_2, w0_2] = calc_orbit(ai, ei, phi0, r0, mu, false, retrograde);
 
-    flybys_1 = eval_orbit(r0_vec, v0_1, ai, ei, w0_1, mu, r_all, t0);
-    flybys_2 = eval_orbit(r0_vec, v0_2, ai, ei, w0_2, mu, r_all, t0);
+    flybys_1 = eval_orbit(r0_vec, v0_1, ai, ei, w0_1, mu, r_all, t0, retrograde);
+    flybys_2 = eval_orbit(r0_vec, v0_2, ai, ei, w0_2, mu, r_all, t0, retrograde);
 
     results = {{flybys_1, r0_vec, v0_1, w0_1}, {flybys_2, r0_vec, v0_2, w0_2}};
 end
 
-function flybys = eval_orbit(r0, v0, ai, ei, w0, mu, r_all, t0)
+function flybys = eval_orbit(r0, v0, ai, ei, w0, mu, r_all, t0, retrograde)
 
 num_b = length(r_all);
 flybys = cell(num_b, 2);
@@ -156,19 +208,33 @@ for n = 1:num_b
     r_b = r_all(n);
 
     [r_b_1, r_b_2, r_sc_1, r_sc_2, tof1, tof2] = ...
-        calc_planet_pos_intersection(r0, ai, ei, mu, r_b, w0, t0);
+        calc_planet_pos_intersection(r0, ai, ei, mu, r_b, w0, t0, retrograde);
 
     dist1 = norm(r_b_1 - r_sc_1);
     dist2 = norm(r_b_2 - r_sc_2);
+
+    if tof1  == 0
+        dist1 = inf;
+        tof1 = inf;
+    end
+
+    if tof2 == 0
+        dist2 = inf;
+        tof2 = inf;
+    end
 
     flybys{n, 1} = {r_b_1, r_sc_1, dist1, tof1};
     flybys{n, 2} = {r_b_2, r_sc_2, dist2, tof2};
 end
 end
 
-function [r0_vec, v0_vec, w0] = calc_orbit(ai, ei, phi0, r0, mu, other_branch)
+function [r0_vec, v0_vec, w0] = calc_orbit(ai, ei, phi0, r0, mu, other_branch, retrograde)
 if nargin < 6
     other_branch = false;
+end
+
+if nargin < 7
+    retrograde = false;
 end
 
 v0 = sqrt(mu * (2/r0 - 1/ai));
@@ -191,10 +257,14 @@ vy = vr*sin(phi0) + vt*cos(phi0);
 
 r0_vec = r0 * [cos(phi0 ); sin(phi0); 0];
 v0_vec = [vx; vy; 0];
+
+if retrograde
+    v0_vec = -v0_vec;
+end
 end
 
 function [r_b_1, r_b_2, r_sc_1, r_sc_2, tof1, tof2] = ...
-    calc_planet_pos_intersection(r0_vec, a, e, mu, r_b, w0, t0)
+    calc_planet_pos_intersection(r0_vec, a, e, mu, r_b, w0, t0, retrograde)
 
 n_b  = mean_motion(r_b, mu);
 n_sc = sqrt(mu/a^3);
@@ -215,8 +285,8 @@ phi1 = mod(w0 + theta1, 2*pi);
 phi2 = mod(w0 + theta2, 2*pi);
 
 % Time from theta0 -> theta_int (forward only)
-tof1 = tof_between_thetas(theta0, theta1, e, n_sc);
-tof2 = tof_between_thetas(theta0, theta2, e, n_sc);
+tof1 = tof_between_thetas(theta0, theta1, e, n_sc, retrograde);
+tof2 = tof_between_thetas(theta0, theta2, e, n_sc, retrograde);
 
 % Absolute times (moons start at phi=0 when t=0)
 t_abs1 = t0 + tof1;
@@ -231,12 +301,17 @@ r_b_2  = r_b * [cos(n_b*t_abs2); sin(n_b*t_abs2); 0];
 
 end
 
-function dt = tof_between_thetas(theta0, theta, e, n)
+function dt = tof_between_thetas(theta0, theta, e, n, retrograde)
 
 M0 = theta_to_M(theta0, e);
 M  = theta_to_M(theta,  e);
 
-dM = mod(M - M0, 2*pi);
+if retrograde
+    dM = mod(M0 - M, 2*pi);
+else
+    dM = mod(M - M0, 2*pi);
+end
+
 dt = dM / n;
 
 end
