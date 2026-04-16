@@ -31,7 +31,7 @@ dt0      = year2sec(1/20);
 
 r_all = [r_b1, r_b2, r_b3];
 
-sequence = [1, 2, 3, 2, 1];
+sequence = [1, 3, 2, 1];
 % sequence = [1, 2, 1];
 num_flyby = length(sequence);
 

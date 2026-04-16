@@ -30,7 +30,7 @@ for i = 1 : N_max+1
         vd = vd_all{i, z};
         va = va_all{i, z};
     
-        [v_inf_minus_all, deltas_all, hi, dt_years_all] = calc_sequence(vd, va, h, s, v0, v1);
+        [v_inf_minus_all, deltas_all, hi, dt_years_all, C, v_inf_minus_local, theta_earth_all] = calc_sequence(vd, va, h, s, v0, v1, theta_b1);
         if isempty(v_inf_minus_all), continue; end
         if isempty(v_inf_minus_all{1}), continue; end
 
@@ -51,11 +51,14 @@ for i = 1 : N_max+1
             'vd', vd, ...
             'fast', sol_type{1}, ...
             'long', sol_type{2}, ...
-            'h_i', hi ...
+            'h_i', hi, ...
+            'rotm', C ...
             );
         struct_temp.dt_years    = dt_years_all;
         struct_temp.v_inf_minus = v_inf_minus_all;
         struct_temp.deltas      = deltas_all;
+        struct_temp.v_local = v_inf_minus_local;
+        struct_temp.theta_earth_all = theta_earth_all;
 
         struct_save.(sprintf('sol_%d', z)) = struct_temp;
     end

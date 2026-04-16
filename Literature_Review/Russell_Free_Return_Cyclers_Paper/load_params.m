@@ -32,6 +32,7 @@ r0 = [r_b1; 0; 0];
 r0_2 = [r_b2; 0; 0];
 
 mean_motion = sqrt(mu / r_b1^3);
+mean_motion_2 = sqrt(mu / r_b2^3);
 
 v0 = v_b1 * [0; 1; 0];
 v0_2 = v_b2 * [0; 1; 0];

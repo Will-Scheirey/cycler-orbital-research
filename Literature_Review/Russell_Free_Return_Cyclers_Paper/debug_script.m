@@ -3,13 +3,26 @@ load_params
 
 %% Run Algorithm
 
-p_targ = 2;
-h_targ = 1;
-s_targ = 1;
-i_targ = 2;
+p_targ = 1; % Number of synodic periods for the cycler
+h_targ = 3; % Number of half-years
+s_targ = 1; % Number of identical generic returns
+i_targ = 5; % Number of revolutions made by generic return
 
-fast = false;
+fast = true;
 long = false;
+
+solution_str = '2.5.1.+0';
+% solution_str = '4.3.1.-5';
+
+str_parts = split(solution_str, '.');
+
+p_targ = str2double(str_parts(1));
+h_targ = str2double(str_parts(2));
+s_targ = str2double(str_parts(3));
+
+fast = contains(str_parts(4), '-');
+
+i_targ = str2double(erase(str_parts(4), '-'));
 
 [N_max, tof, rev_all] = russell_algorithm(tau, p_targ, h_targ, s_targ, mean_motion, r_b1, v_b1, r_b2, r0, v0, mu_b1, mu, rp_min, TR_min, AR_min, year2sec);
 
@@ -26,6 +39,13 @@ vd = target_solutions{1}.vd;
 
 [theta_intersect, r_intersect] = get_intersection(r0, vd, mu, r_b2);
 
+tof_intersect = tof_from_theta(r0, vd, mu, theta_intersect);
+
+mars_theta0 = theta_intersect - mean_motion_2*tof_intersect;
+
+r0_2 = r_b2 * [cos(mars_theta0); sin(mars_theta0); 0];
+v0_2 = v_b2 * [-sin(mars_theta0); cos(mars_theta0); 0];
+
 r_intersect_vec = r_intersect * [cos(theta_intersect); sin(theta_intersect); 0];
 
 theta_end = p_targ * angle_turn;
@@ -36,123 +56,188 @@ r_end = r_b1 * [cos(theta_end); sin(theta_end); 0];
 
 figure(1)
 clf
-hold on
 
 plot_orbit(r0, v0, mu, 'DisplayName', 'Earth', 'LineStyle', '--', 'LineWidth', 2); hold on
 plot_orbit(r0_2, v0_2, mu, 'DisplayName', 'Mars', 'LineStyle', '--', 'LineWidth', 2);
-
-for i = 1:length(target_solutions)
-    solution = target_solutions{i};
-    plot_solution(solution, mu, vd, r_b1, v_b1, theta_b1_turn)
-end
+hold on
 
 lim = r_b2 * 1.1;
+
+solution = target_solutions{1};
+[orbits, pos_all] = plot_solution(solution, mu, vd, r_b1, v_b1, theta_b1_turn, lim/20);
 
 plot_intersection(r0, lim/20, "0")
 plot_intersection(r_intersect_vec, lim/20, "1")
 plot_intersection(r_end, lim/20, "end")
+plot_intersection(r0_2, lim/20, "Mars Start")
 
-title(sprintf("Solutions for %d.%d.%d.%d; TOF = %0.2f years", p_targ, h_targ, s_targ, i_targ, tof * sec2year))
+view(2)
 
+title(sprintf("Solutions for %s", solution_str));
+
+axis equal
+
+% return
+figure(2)
+C = solution.rotm;
+
+min_z = inf;
+for n=1:length(pos_all)
+    local = solution.v_local{n};
+    z = local(3);
+    min_z = min(min_z, z);
+end
+
+v_inf_norm = norm(solution.v_inf_minus{1}{1});
+draw_sphere(v_inf_norm, [0, 0, 0], [-inf,inf], [-inf,inf], [min_z,inf], 'FaceAlpha', 0.1, 'FaceColor', 'blue', 'LineStyle','none', 'DisplayName', 'Primary Velocity Sphere')
+
+hold on;
+
+num_orbits = length(pos_all);
+colors = turbo(num_orbits);
+for n = 1:num_orbits
+    r0_sc = pos_all{n}{1} / AU;
+    v0_sc = pos_all{n}{2};
+    tof   = pos_all{n}{3};
+    C = solution.rotm;
+
+    v_inf = solution.v_inf_minus{1}{n};
+
+    v = solution.v_local{n};
+
+    fprintf("Segment %d\n" + ...
+        "\tr0:    (%0.2f, %0.2f, %0.2f) AU; mag %0.2f\n" + ...
+        "\tv0:    (%0.2f, %0.2f, %0.2f) km/s; mag %0.2f\n"+ ...
+        "\tv_inf: (%0.2f, %0.2f, %0.2f) km/s; mag %0.2f\n"+ ...% "\tv_mag: %0.2f km/s"+ ...
+        "\tv_inf_FRAME: (%0.2f, %0.2f, %0.2f) km/s; mag %0.2f\n"+ ...% "\tv_mag: %0.2f km/s"+ ...
+        "\n", n, r0_sc(1), r0_sc(2), r0_sc(3), norm(r0_sc), ...
+        v0_sc(1), v0_sc(2), v0_sc(3), norm(v0_sc), ...
+        v_inf(1), v_inf(2), v_inf(3), norm(v_inf), ...
+        v(1), v(2), v(3), norm(v));
+
+    figure(2)
+    quiver3(0, 0, 0, v(1), v(2), v(3), 'LineWidth', 3, 'Color', colors(n, :), 'DisplayName', sprintf('V inf %d', n), 'AutoScale', 'off');
+    hold on
+end
+
+figure(2)
+legend
+axis equal
+xlabel("X")
+ylabel("Y")
+zlabel("Z (Earth Velocity)")
+title("Local Frame")
+
+return
+figure(2);
+clf
+
+num_orbits = length(pos_all);
+
+t0 = 0;
+
+rel_frame_all = [0, 0, 0];
+inertial_frame_all = [0, 0, 0];
+figure(2)
+clf
+
+num_orbits = length(pos_all);
+t0 = 0;
+num_plot = 1000;
+
+for n = 1:num_orbits
+    r0_sc = pos_all{n}{1};
+    v0_sc = pos_all{n}{2};
+    tof   = pos_all{n}{3};
+
+    t = linspace(0, tof, num_plot);
+
+    x_r = zeros(size(t));
+    y_r = zeros(size(t));
+    z_r = zeros(size(t));
+
+    p_sc_all = zeros(length(t), 3);
+
+    for k = 1:length(t)
+        tk = t(k) + t0;
+
+        r_sc = get_planet_pos(r0_sc, v0_sc, mu, t(k));
+        r_e  = get_planet_pos(r0,   v0,   mu, tk);
+        r_m  = get_planet_pos(r0_2, v0_2, mu, tk);
+
+        p_sc_all(k, :) = r_sc;
+
+        x_sc = r_sc(1); y_sc = r_sc(2); z_sc = r_sc(3);
+        x_e  = r_e(1);  y_e  = r_e(2);
+        x_m  = r_m(1);  y_m  = r_m(2);
+
+        r_e  = [x_e; y_e; 0];
+        r_m  = [x_m; y_m; 0];
+        r_sc = [x_sc; y_sc; z_sc];
+
+        r_em = r_m - r_e;
+        d_em = norm(r_em);
+
+        xhat = r_em / d_em;
+        yhat = [-xhat(2); xhat(1); 0];
+
+        r_rel = r_sc - r_e;
+
+        x_r(k) = dot(r_rel, xhat) / d_em;
+        y_r(k) = dot(r_rel, yhat) / d_em;
+        z_r(k) = r_rel(3) / d_em;
+    end
+    
+    inertial_frame_all = vertcat(inertial_frame_all, p_sc_all);
+
+    rel_frame_all = vertcat(rel_frame_all, [x_r', y_r', z_r']);
+
+    figure(3)
+    plot3(x_r, y_r, z_r, '-k', 'Clipping','off', 'HandleVisibility', 'off'); hold on
+
+    t0 = t0 + tof;
+end
+
+
+rel_frame_all = rel_frame_all(2:end, :);
+inertial_frame_all = inertial_frame_all(2:end, :);
+
+
+figure(2);
+clf
+plot3(rel_frame_all(:, 1), rel_frame_all(:, 2), rel_frame_all(:, 3), '.k', 'Clipping','off', 'DisplayName', 'Trajectory'); hold on
+plot3(0, 0, 0, '.b', 'MarkerSize', 50, 'DisplayName', 'Earth')
+plot3(1, 0, 0, '.r', 'MarkerSize', 50, 'DisplayName', 'Mars')
+legend
+axis equal
+
+lim = 3;
 xlim([-1,1]*lim)
 ylim([-1,1]*lim)
-axis square
+zlim([-1,1]*lim)
+
+figure(3);
+clf
+plot3(inertial_frame_all(:, 1), inertial_frame_all(:, 2), inertial_frame_all(:, 3), '.k', 'Clipping','off', 'DisplayName', 'Trajectory'); hold on
 
 legend
+axis equal
 
-function plot_intersection(r, offset_x, text_str)
-    plot(r(1), r(2), 'k.', 'MarkerSize', 25, 'LineWidth', 2, 'HandleVisibility', 'off')
-    text(r(1) + offset_x, r(2), text_str)
-end
+function draw_sphere(radius, origin, x_lim, y_lim, z_lim, varargin)
+num_points = 200;
+azimuth   = linspace(0, 2*pi, num_points);
+elevation = linspace(-pi/2, pi/2, num_points);
 
-function plot_solution(solution, mu, vd_generic, r_b1, v_b1, theta_generic)
+[az, el] = meshgrid(azimuth, elevation);
 
-    num_s = solution.s;
-    
-    theta_earth = theta_generic;
+[x, y, z] = sph2cart(az, el, radius);
+x(x < x_lim(1)) = x_lim(1); x(x > x_lim(2)) = x_lim(2);
+y(y < y_lim(1)) = y_lim(1); y(y > y_lim(2)) = y_lim(2);
+z(z < z_lim(1)) = z_lim(1); z(z > z_lim(2)) = z_lim(2);
 
-    total_lines = 0;
-    for s = 1:num_s
-        total_lines = total_lines + length(solution.v_inf_minus{s});
-    end
+x = x + origin(1);
+y = y + origin(2);
+z = z + origin(3);
 
-    colors = copper(total_lines+1);
-    line_idx = 2;
-
-    color = colors(1, :);
-
-    r0 = [r_b1; 0; 0];
-
-    plot_orbit(r0, vd_generic, mu, 'DisplayName', 'Initial Generic', 'LineWidth', 1.5, 'Color', color);
-    quiver(0, 0, r0(1), r0(2), 0, 'LineWidth', 1.5, 'Color', color, 'HandleVisibility', 'off');
-
-    for s = 1:num_s
-
-        v_inf_minus = solution.v_inf_minus{s};
-        dt_years    = solution.dt_years{s};
-
-        k_all = 1:length(v_inf_minus);
-        num_k = length(k_all);
-
-        if s > 1
-            k_min = 1;
-        else
-            k_min = 2;
-        end
-
-        if s < num_s
-            k_max = num_k;
-        else
-            k_max = num_k-1;
-        end
-        
-        for k_idx = k_min:k_max
-            k = k_all(k_idx);
-        
-            r1 = r_b1 * [cos(theta_earth); sin(theta_earth); 0];
-            v1 = v_b1 * [-sin(theta_earth); cos(theta_earth); 0];
-        
-            vd = v_inf_minus{k} + v1;
-            
-            if k_idx == 1 || k == num_k
-                name = sprintf("Seq %d; Trajectory 0; Generic", s);
-            elseif k_idx < num_k 
-                name = sprintf("Seq %d; Trajectory %d; %0.1f-rev", s, k_idx, dt_years(k_idx - 1));
-            end
-
-            theta_rev = 2*pi;
-            if k_idx > 1 && k_idx < num_k
-                theta_rev = dt_years(k_idx - 1) * 2*pi;
-            end
-        
-            color = colors(line_idx, :);
-
-            plot_orbit_theta(r1, vd, mu, [theta_earth, theta_earth+theta_rev], 'DisplayName', name, 'LineWidth', 1.5, 'Color', color);
-            quiver(0, 0, r1(1), r1(2), 0, 'LineWidth', 1.5, 'Color', color, 'HandleVisibility', 'off');
-        
-            if k_idx > 1 && k_idx < num_k
-                theta_earth = theta_earth + dt_years(k_idx - 1) * 2*pi;
-            else
-                theta_earth = theta_earth + theta_generic;
-            end
-            line_idx = line_idx + 1;
-        end
-        % theta_earth = theta_generic * s;
-        % r1 = r_b1 * [cos(theta_earth); sin(theta_earth); 0];
-        % v1 = v_b1 * [-sin(theta_earth); cos(theta_earth); 0];
-        % plot_orbit(r1, v1 + v_inf_minus{end}, mu, 'DisplayName', 'Generic Return Reinitiated', 'LineWidth', 1.5);
-    end
-end
-
-function [theta, r2] = get_intersection(r0, vd, mu, r_b2)
-[r, h, e, p_generic, w, nu] = calc_orbit(r0, vd, mu);
-
-theta = theta_from_r(p_generic, e, w, r_b2);
-r2 = r_b2;
-
-if imag(theta) ~= 0
-    ra = ra_from_rv(r0, vd, mu);
-    theta = real(theta_from_r(p_generic, e, w, ra));
-    r2 = ra;
-end
+surf(x, y, z, varargin{:}); hold on
 end

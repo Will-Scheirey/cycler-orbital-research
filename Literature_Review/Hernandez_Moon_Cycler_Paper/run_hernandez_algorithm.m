@@ -98,23 +98,30 @@ clf
 histogram(costs_pro, bins, 'Normalization','percentage', 'LineStyle', 'none')
 title("Prograde")
 ylim([0, 300/num_bins])
+xlabel("Cost")
+ylabel("Number of Solutions")
 
 figure(2)
 clf
 histogram(costs_ret, bins, 'Normalization','percentage', 'LineStyle', 'none')
 title("Retrograde")
 ylim([0, 300/num_bins])
+xlabel("Cost")
+ylabel("Number of Solutions")
 
+%{
 figure(3)
 clf
-C = cell2mat(costs_all_ret);
+C = cell2mat(costs_all_pro);
 [globalMin, linearIdx] = min(C, [], 'all');
 [i, j, k, w] = ind2sub(size(C), linearIdx); % For a 3D array
 
-guess  = flybys_all_ret{i, j, k};
+guess  = flybys_all_pro{i, j, k};
+
 
 phi_i = phi_all(k);
 plot_guess(guess, a_io, a_eu, a_ga, mu, n0, r_all, phi_i, w)
+%}
 
 function cost = cost_fcn(guess, r_all, direction)
     num_bodies = length(r_all);
@@ -130,7 +137,7 @@ function cost = cost_fcn(guess, r_all, direction)
         closest(n) = min(dist1, dist2);
     end
 
-    cost = norm(closest, 2);
+    cost = sum(closest);
 end
 
 function plot_guess(guess, a_io, a_eu, a_ga, mu, n0, r_all, phi, w)
@@ -154,7 +161,7 @@ plot_orbit_circular(a_eu, mu, 'DisplayName', 'Europa', 'LineWidth', 2);
 plot_orbit_circular(a_ga, mu, 'DisplayName', 'Ganymede', 'LineWidth', 2);
 
 plot_orbit(r0, v0, mu, 'DisplayName', 'Orbit', 'LineWidth', 1.5);
-plot(r0(1), r0(2), 'kx', 'DisplayName', 'Initial Position', 'MarkerSize', 20, 'LineWidth', 2)
+% plot(r0(1), r0(2), 'kx', 'DisplayName', 'Initial Position', 'MarkerSize', 20, 'LineWidth', 2)
 quiver(r0(1), r0(2), v0(1), v0(2), 3e4, 'k-', 'DisplayName', 'Initial Velocity', 'MarkerSize', 20, 'LineWidth', 2)
 
 distances = zeros(num_bodies, 2);
@@ -168,14 +175,14 @@ for n = 1:num_bodies
     rsc1 = guess_flybys{n, 1}{2};
     rsc2 = guess_flybys{n, 2}{2};
 
-    p = plot(rb1(1), rb1(2), 'rx', 'DisplayName', "Intersect 1", 'MarkerSize', 20, 'LineWidth', 2);
+    % p = plot(rb1(1), rb1(2), 'rx', 'DisplayName', "Intersect 1", 'MarkerSize', 20, 'LineWidth', 2);
     if n ~= 1, p.HandleVisibility = 'off'; end
 
-    p = plot(rb2(1), rb2(2), 'bx', 'DisplayName', "Intersect 2", 'MarkerSize', 20, 'LineWidth', 2);
+    % p = plot(rb2(1), rb2(2), 'bx', 'DisplayName', "Intersect 2", 'MarkerSize', 20, 'LineWidth', 2);
     if n ~= 1, p.HandleVisibility = 'off'; end
 
-    plot(rsc1(1), rsc1(2), 'rx', 'DisplayName', sprintf("SC at Body %d Intersect 1", n), 'MarkerSize', 20, 'LineWidth', 2, 'HandleVisibility', 'off')
-    plot(rsc2(1), rsc2(2), 'bx', 'DisplayName', sprintf("SC at Body %d Intersect 2", n), 'MarkerSize', 20, 'LineWidth', 2, 'HandleVisibility', 'off')
+    % plot(rsc1(1), rsc1(2), 'rx', 'DisplayName', sprintf("SC at Body %d Intersect 1", n), 'MarkerSize', 20, 'LineWidth', 2, 'HandleVisibility', 'off')
+    % plot(rsc2(1), rsc2(2), 'bx', 'DisplayName', sprintf("SC at Body %d Intersect 2", n), 'MarkerSize', 20, 'LineWidth', 2, 'HandleVisibility', 'off')
 
     t0         = phi / n0;
     theta_body = mean_motion(r_all(n), mu) * t0;
@@ -186,5 +193,6 @@ for n = 1:num_bodies
 end
 
 axis equal
+set(gca,'XColor', 'none','YColor','none')
 legend
 end

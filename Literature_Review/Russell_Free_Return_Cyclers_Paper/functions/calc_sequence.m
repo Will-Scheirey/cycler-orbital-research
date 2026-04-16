@@ -1,9 +1,12 @@
-function [v_inf_minus_all, deltas_all, hi, dt_years_all] = calc_sequence(vd, va, h, s, v_e_dep, v_e_arr)
+function [v_inf_minus_all, deltas_all, hi, dt_years_all, C, v_inf_minus_local, theta_earth_all] = calc_sequence(vd, va, h, s, v_e_dep, v_e_arr, theta_generic)
 
 v_inf_minus_all      = [];
+v_inf_minus_local    = [];
 deltas_all           = [];
 hi                   = [];
 dt_years_all         = [];
+C                    = [];
+theta_earth_all      = [];
 
 [phi_fr, phi_gr] = calc_phi(vd, va, v_e_dep, v_e_arr);
 
@@ -14,29 +17,22 @@ end
 % Assemble reference frame
 
 v_inf_1_minus = va - v_e_arr;
-v_inf_mag     = norm(v_inf_1_minus);
+v_inf_mag = norm(v_inf_1_minus);
+C = calc_C(v_inf_1_minus, v_e_arr);
 
 if v_inf_mag == 0
     return
 end
 
-z_hat = v_e_arr / norm(v_e_arr);
-
-x_vec = v_inf_1_minus - dot(v_inf_1_minus, z_hat)*z_hat;
-x_hat = x_vec / norm(x_vec);
-
-y_hat = cross(z_hat, x_hat);
-y_hat = y_hat / norm(y_hat);
-
-C = [x_hat, y_hat, z_hat];          % local->global
-
 hi = calc_hi(phi_gr, phi_fr, h, s);
 
 num_hi = length(hi);
 
-v_inf_minus_all  = cell(num_hi, 1);
+v_inf_minus_all    = cell(num_hi, 1);
+v_inf_minus_local  = cell(num_hi, 1);
 deltas_all = cell(num_hi, 1);
 dt_years_all     = cell(num_hi, 1);
+theta_earth = 0;
 
 for j = 1:num_hi
 
@@ -66,7 +62,7 @@ for j = 1:num_hi
         v_inf_minus = cell(2,1);
         v_inf_minus{1} = C * [vx1; vy1; vz1];
         v_inf_minus{2} = C * [vx2; vy2; vz2];
-        v_inf_minus{3} = C * -[vx1; vy1; vz1];
+        v_inf_minus{3} = C * -[vx2; vy2; vz2];
 
         deltas = [delta_minimax, delta_minimax];
 
@@ -79,8 +75,10 @@ for j = 1:num_hi
 
     v_inf_minus = cell(fj+1, 1);
     deltas = zeros(fj - 1, 1);
+    theta_earth_all  = zeros(fj+1, 1);
 
     for k=1:fj
+        theta_earth_all(k) = theta_earth;
         if k == 1
             lat = phi_gr;
             lon = 0;
@@ -95,28 +93,59 @@ for j = 1:num_hi
 
         [vx, vy, vz] = sph2cart(-lon, lat, v_inf_mag);
 
-        if k == 1
-            vd0 = [vx; vy; vz];
-        end
-        v_global = C * [vx;vy;vz];
+        vd = [vx; vy; vz];
 
+        if k == 1
+            vd0 = vd;
+        end
+
+        v_global = C * vd;
+
+        v_inf_minus_local{k} = vd;
         v_inf_minus{k} = v_global;
 
+        %{
         if k >= 2
             v_prev = v_inf_minus{k-1};
             v_curr = v_inf_minus{k};
 
             deltas(k-1) = acos(dot(v_prev, v_curr) / (norm(v_prev)*norm(v_curr)));
         end
+        %}
+        if k == 1
+            theta_earth = theta_earth + theta_generic;
+        else
+            theta_earth = theta_earth + dt_years(k-1) * 2*pi;
+        end
+
+        % theta_earth = mod(theta_earth, 2*pi);
     end
 
-    v_inf_minus{fj+1}  = C * -vd0;
+    theta_earth_all(fj+1) = theta_earth;
+
+    vd_loc = [-vd0(1); vd0(2); vd0(3)];
+    vd = (C * vd_loc);
+    
+    v_inf_minus{fj+1}  = vd;
+    v_inf_minus_local{fj+1} = vd_loc;
 
     v_inf_minus_all{j} = v_inf_minus;
     deltas_all{j}      = deltas;
     dt_years_all{j}    = dt_years;
 end
 
+end
+
+function C = calc_C(v_local, v_e)
+z_hat = v_e / norm(v_e);
+
+x_vec = v_local - dot(v_local, z_hat)*z_hat;
+x_hat = x_vec / norm(x_vec);
+
+y_hat = cross(z_hat, x_hat);
+y_hat = y_hat / norm(y_hat);
+
+C = [x_hat, y_hat, z_hat];          % local->global
 end
 
 function hi = calc_hi(phi_gr, phi_fr, h, s)
