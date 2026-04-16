@@ -1,20 +1,18 @@
-function [v_inf_minus_all, deltas_all, hi, dt_years_all, C, v_inf_minus_local, theta_earth_all] = calc_sequence(vd, va, h, s, v_e_dep, v_e_arr, theta_generic)
+function [v_inf_minus_all, deltas_all, hi, dt_years_all, C, v_inf_minus_local_all, theta_earth_all] = calc_sequence(vd, va, h, s, v_e_dep, v_e_arr, theta_generic)
 
-v_inf_minus_all      = [];
-v_inf_minus_local    = [];
-deltas_all           = [];
-hi                   = [];
-dt_years_all         = [];
-C                    = [];
-theta_earth_all      = [];
+v_inf_minus_all        = [];
+v_inf_minus_local_all  = [];
+deltas_all             = [];
+hi                     = [];
+dt_years_all           = [];
+C                      = [];
+theta_earth_all        = [];
 
 [phi_fr, phi_gr] = calc_phi(vd, va, v_e_dep, v_e_arr);
 
 if ~isfinite(phi_fr) || ~isfinite(phi_gr)
     return
 end
-
-% Assemble reference frame
 
 v_inf_1_minus = va - v_e_arr;
 v_inf_mag = norm(v_inf_1_minus);
@@ -25,13 +23,14 @@ if v_inf_mag == 0
 end
 
 hi = calc_hi(phi_gr, phi_fr, h, s);
-
 num_hi = length(hi);
 
-v_inf_minus_all    = cell(num_hi, 1);
-v_inf_minus_local  = cell(num_hi, 1);
-deltas_all = cell(num_hi, 1);
-dt_years_all     = cell(num_hi, 1);
+v_inf_minus_all       = cell(num_hi, 1);
+v_inf_minus_local_all = cell(num_hi, 1);
+deltas_all            = cell(num_hi, 1);
+dt_years_all          = cell(num_hi, 1);
+theta_earth_all       = cell(num_hi, 1);
+
 theta_earth = 0;
 
 for j = 1:num_hi
@@ -39,46 +38,74 @@ for j = 1:num_hi
     hj = hi(j);
 
     [fj, dt_years] = russell_table2_fcn(hj);
-
     [delta_c, delta_a, delta_minimax, delta_min, lambda_a, lambda_b, lambda] = calc_deltas(phi_gr, phi_fr, fj);
+
+    v_inf_minus_j       = cell(fj + 1, 1);
+    v_inf_minus_local_j = cell(fj + 1, 1);
+    theta_earth_j       = zeros(fj + 1, 1);
 
     if fj == 1
         deltas = delta_c;
 
         [vx1, vy1, vz1] = sph2cart(0, phi_gr, v_inf_mag);
-        v_inf_minus = {[vx1; vy1; vz1]};
+        vd0 = [vx1; vy1; vz1];
 
-        v_inf_minus_all{j} = v_inf_minus;
-        deltas_all{j}      = deltas;
-        dt_years_all{j}    = dt_years;
+        theta_earth_j(1) = theta_earth;
+        theta_earth = theta_earth + theta_generic;
+        theta_earth_j(2) = theta_earth;
 
+        v_inf_minus_local_j{1} = vd0;
+        v_inf_minus_j{1} = C * vd0;
+
+        vd_restart_local = [-vd0(1); vd0(2); vd0(3)];
+        v_inf_minus_local_j{2} = vd_restart_local;
+        v_inf_minus_j{2} = C * vd_restart_local;
+
+        v_inf_minus_all{j}       = v_inf_minus_j;
+        v_inf_minus_local_all{j} = v_inf_minus_local_j;
+        deltas_all{j}            = deltas;
+        dt_years_all{j}          = dt_years;
+        theta_earth_all{j}       = theta_earth_j;
         continue
     end
 
     if fj == 2
-        [vx1, vy1, vz1] = sph2cart(0,      phi_gr, v_inf_mag);
-        [vx2, vy2, vz2] = sph2cart(pi/2,   phi_fr, v_inf_mag);
+        [vx1, vy1, vz1] = sph2cart(0,    phi_gr, v_inf_mag);
+        [vx2, vy2, vz2] = sph2cart(pi/2, phi_fr, v_inf_mag);
 
-        v_inf_minus = cell(2,1);
-        v_inf_minus{1} = C * [vx1; vy1; vz1];
-        v_inf_minus{2} = C * [vx2; vy2; vz2];
-        v_inf_minus{3} = C * -[vx2; vy2; vz2];
+        vd1 = [vx1; vy1; vz1];
+        vd2 = [vx2; vy2; vz2];
+        vd3 = -vd2;
+
+        theta_earth_j(1) = theta_earth;
+        theta_earth = theta_earth + theta_generic;
+        theta_earth_j(2) = theta_earth;
+        theta_earth = theta_earth + dt_years(1) * 2*pi;
+        theta_earth_j(3) = theta_earth;
+
+        v_inf_minus_local_j{1} = vd1;
+        v_inf_minus_local_j{2} = vd2;
+        v_inf_minus_local_j{3} = vd3;
+
+        v_inf_minus_j{1} = C * vd1;
+        v_inf_minus_j{2} = C * vd2;
+        v_inf_minus_j{3} = C * vd3;
 
         deltas = [delta_minimax, delta_minimax];
 
-        v_inf_minus_all{j} = v_inf_minus;
-        deltas_all{j}      = deltas;
-        dt_years_all{j}    = dt_years;
-
+        v_inf_minus_all{j}       = v_inf_minus_j;
+        v_inf_minus_local_all{j} = v_inf_minus_local_j;
+        deltas_all{j}            = deltas;
+        dt_years_all{j}          = dt_years;
+        theta_earth_all{j}       = theta_earth_j;
         continue
     end
 
-    v_inf_minus = cell(fj+1, 1);
     deltas = zeros(fj - 1, 1);
-    theta_earth_all  = zeros(fj+1, 1);
 
-    for k=1:fj
-        theta_earth_all(k) = theta_earth;
+    for k = 1:fj
+        theta_earth_j(k) = theta_earth;
+
         if k == 1
             lat = phi_gr;
             lon = 0;
@@ -87,51 +114,35 @@ for j = 1:num_hi
             if delta_min > delta_a
                 lon = lambda_a * (k - 2);
             else
-                lon = lambda + lambda_b * (k-2);
+                lon = lambda + lambda_b * (k - 2);
             end
         end
 
         [vx, vy, vz] = sph2cart(-lon, lat, v_inf_mag);
-
-        vd = [vx; vy; vz];
+        vd_local = [vx; vy; vz];
 
         if k == 1
-            vd0 = vd;
-        end
-
-        v_global = C * vd;
-
-        v_inf_minus_local{k} = vd;
-        v_inf_minus{k} = v_global;
-
-        %{
-        if k >= 2
-            v_prev = v_inf_minus{k-1};
-            v_curr = v_inf_minus{k};
-
-            deltas(k-1) = acos(dot(v_prev, v_curr) / (norm(v_prev)*norm(v_curr)));
-        end
-        %}
-        if k == 1
+            vd0 = vd_local;
             theta_earth = theta_earth + theta_generic;
         else
-            theta_earth = theta_earth + dt_years(k-1) * 2*pi;
+            theta_earth = theta_earth + dt_years(k - 1) * 2*pi;
         end
 
-        % theta_earth = mod(theta_earth, 2*pi);
+        v_inf_minus_local_j{k} = vd_local;
+        v_inf_minus_j{k} = C * vd_local;
     end
 
-    theta_earth_all(fj+1) = theta_earth;
+    theta_earth_j(fj + 1) = theta_earth;
 
-    vd_loc = [-vd0(1); vd0(2); vd0(3)];
-    vd = (C * vd_loc);
-    
-    v_inf_minus{fj+1}  = vd;
-    v_inf_minus_local{fj+1} = vd_loc;
+    vd_restart_local = [-vd0(1); vd0(2); vd0(3)];
+    v_inf_minus_local_j{fj + 1} = vd_restart_local;
+    v_inf_minus_j{fj + 1} = C * vd_restart_local;
 
-    v_inf_minus_all{j} = v_inf_minus;
-    deltas_all{j}      = deltas;
-    dt_years_all{j}    = dt_years;
+    v_inf_minus_all{j}       = v_inf_minus_j;
+    v_inf_minus_local_all{j} = v_inf_minus_local_j;
+    deltas_all{j}            = deltas;
+    dt_years_all{j}          = dt_years;
+    theta_earth_all{j}       = theta_earth_j;
 end
 
 end

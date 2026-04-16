@@ -77,50 +77,72 @@ title(sprintf("Solutions for %s", solution_str));
 
 axis equal
 
-% return
 figure(2)
+clf
+
 C = solution.rotm;
 
-min_z = inf;
-for n=1:length(pos_all)
-    local = solution.v_local{n};
-    z = local(3);
-    min_z = min(min_z, z);
+% Flatten the nested per-s storage into one list for plotting/debug
+v_local_flat = {};
+v_inf_flat   = {};
+
+for s_idx = 1:solution.s
+    v_local_s = solution.v_local{s_idx};
+    v_inf_s   = solution.v_inf_minus{s_idx};
+
+    for k = 1:length(v_local_s)
+        v_local_flat{end+1,1} = v_local_s{k};
+        v_inf_flat{end+1,1}   = v_inf_s{k};
+    end
 end
 
-v_inf_norm = norm(solution.v_inf_minus{1}{1});
-draw_sphere(v_inf_norm, [0, 0, 0], [-inf,inf], [-inf,inf], [min_z,inf], 'FaceAlpha', 0.1, 'FaceColor', 'blue', 'LineStyle','none', 'DisplayName', 'Primary Velocity Sphere')
+min_z = inf;
+for n = 1:length(v_local_flat)
+    v_local = v_local_flat{n};
+    min_z = min(min_z, v_local(3));
+end
 
-hold on;
+v_inf_norm = norm(v_inf_flat{1});
+draw_sphere(v_inf_norm, [0, 0, 0], [-inf, inf], [-inf, inf], [min_z, inf], ...
+    'FaceAlpha', 0.1, ...
+    'FaceColor', 'blue', ...
+    'LineStyle', 'none', ...
+    'DisplayName', 'Primary Velocity Sphere');
 
-num_orbits = length(pos_all);
-colors = turbo(num_orbits);
-for n = 1:num_orbits
+hold on
+
+num_vec = length(v_local_flat);
+colors = turbo(num_vec);
+
+num_print = min(length(pos_all), num_vec);
+
+for n = 1:num_print
     r0_sc = pos_all{n}{1} / AU;
     v0_sc = pos_all{n}{2};
     tof   = pos_all{n}{3};
-    C = solution.rotm;
 
-    v_inf = solution.v_inf_minus{1}{n};
-
-    v = solution.v_local{n};
+    v_inf = v_inf_flat{n};
+    v     = v_local_flat{n};
 
     fprintf("Segment %d\n" + ...
         "\tr0:    (%0.2f, %0.2f, %0.2f) AU; mag %0.2f\n" + ...
-        "\tv0:    (%0.2f, %0.2f, %0.2f) km/s; mag %0.2f\n"+ ...
-        "\tv_inf: (%0.2f, %0.2f, %0.2f) km/s; mag %0.2f\n"+ ...% "\tv_mag: %0.2f km/s"+ ...
-        "\tv_inf_FRAME: (%0.2f, %0.2f, %0.2f) km/s; mag %0.2f\n"+ ...% "\tv_mag: %0.2f km/s"+ ...
-        "\n", n, r0_sc(1), r0_sc(2), r0_sc(3), norm(r0_sc), ...
+        "\tv0:    (%0.2f, %0.2f, %0.2f) km/s; mag %0.2f\n" + ...
+        "\tv_inf: (%0.2f, %0.2f, %0.2f) km/s; mag %0.2f\n" + ...
+        "\tv_inf_FRAME: (%0.2f, %0.2f, %0.2f) km/s; mag %0.2f\n\n", ...
+        n, ...
+        r0_sc(1), r0_sc(2), r0_sc(3), norm(r0_sc), ...
         v0_sc(1), v0_sc(2), v0_sc(3), norm(v0_sc), ...
         v_inf(1), v_inf(2), v_inf(3), norm(v_inf), ...
         v(1), v(2), v(3), norm(v));
 
-    figure(2)
-    quiver3(0, 0, 0, v(1), v(2), v(3), 'LineWidth', 3, 'Color', colors(n, :), 'DisplayName', sprintf('V inf %d', n), 'AutoScale', 'off');
+    quiver3(0, 0, 0, v(1), v(2), v(3), ...
+        'LineWidth', 3, ...
+        'Color', colors(n, :), ...
+        'DisplayName', sprintf('V inf %d', n), ...
+        'AutoScale', 'off');
     hold on
 end
 
-figure(2)
 legend
 axis equal
 xlabel("X")
@@ -128,22 +150,13 @@ ylabel("Y")
 zlabel("Z (Earth Velocity)")
 title("Local Frame")
 
-return
-figure(2);
-clf
-
 num_orbits = length(pos_all);
+num_plot   = 1000;
 
 t0 = 0;
 
-rel_frame_all = [0, 0, 0];
-inertial_frame_all = [0, 0, 0];
-figure(2)
-clf
-
-num_orbits = length(pos_all);
-t0 = 0;
-num_plot = 1000;
+rel_frame_all      = cell(num_orbits, 1);
+inertial_frame_all = cell(num_orbits, 1);
 
 for n = 1:num_orbits
     r0_sc = pos_all{n}{1};
@@ -152,76 +165,100 @@ for n = 1:num_orbits
 
     t = linspace(0, tof, num_plot);
 
-    x_r = zeros(size(t));
-    y_r = zeros(size(t));
-    z_r = zeros(size(t));
+    rel_seg      = zeros(num_plot, 3);
+    inertial_seg = zeros(num_plot, 3);
 
-    p_sc_all = zeros(length(t), 3);
-
-    for k = 1:length(t)
+    for k = 1:num_plot
         tk = t(k) + t0;
 
         r_sc = get_planet_pos(r0_sc, v0_sc, mu, t(k));
         r_e  = get_planet_pos(r0,   v0,   mu, tk);
         r_m  = get_planet_pos(r0_2, v0_2, mu, tk);
 
-        p_sc_all(k, :) = r_sc;
-
-        x_sc = r_sc(1); y_sc = r_sc(2); z_sc = r_sc(3);
-        x_e  = r_e(1);  y_e  = r_e(2);
-        x_m  = r_m(1);  y_m  = r_m(2);
-
-        r_e  = [x_e; y_e; 0];
-        r_m  = [x_m; y_m; 0];
-        r_sc = [x_sc; y_sc; z_sc];
+        inertial_seg(k, :) = r_sc(:)';
 
         r_em = r_m - r_e;
         d_em = norm(r_em);
 
         xhat = r_em / d_em;
         yhat = [-xhat(2); xhat(1); 0];
+        zhat = [0; 0; 1];
 
         r_rel = r_sc - r_e;
 
-        x_r(k) = dot(r_rel, xhat) / d_em;
-        y_r(k) = dot(r_rel, yhat) / d_em;
-        z_r(k) = r_rel(3) / d_em;
+        rel_seg(k, 1) = dot(r_rel, xhat) / d_em;
+        rel_seg(k, 2) = dot(r_rel, yhat) / d_em;
+        rel_seg(k, 3) = dot(r_rel, zhat) / d_em;
     end
-    
-    inertial_frame_all = vertcat(inertial_frame_all, p_sc_all);
 
-    rel_frame_all = vertcat(rel_frame_all, [x_r', y_r', z_r']);
-
-    figure(3)
-    plot3(x_r, y_r, z_r, '-k', 'Clipping','off', 'HandleVisibility', 'off'); hold on
+    inertial_frame_all{n} = inertial_seg;
+    rel_frame_all{n}      = rel_seg;
 
     t0 = t0 + tof;
 end
 
-
-rel_frame_all = rel_frame_all(2:end, :);
-inertial_frame_all = inertial_frame_all(2:end, :);
-
-
-figure(2);
+%% Plot pulsating Earth/Mars-fixed frame
+figure(3)
 clf
-plot3(rel_frame_all(:, 1), rel_frame_all(:, 2), rel_frame_all(:, 3), '.k', 'Clipping','off', 'DisplayName', 'Trajectory'); hold on
+hold on
+
+colors = turbo(num_orbits);
+
+for n = 1:num_orbits
+    rel_seg = rel_frame_all{n};
+    plot3(rel_seg(:,1), rel_seg(:,2), rel_seg(:,3), ...
+        'LineWidth', 2, ...
+        'Color', colors(n,:), ...
+        'DisplayName', sprintf('Trajectory %d', n), ...
+        'Clipping', 'off');
+end
+
 plot3(0, 0, 0, '.b', 'MarkerSize', 50, 'DisplayName', 'Earth')
 plot3(1, 0, 0, '.r', 'MarkerSize', 50, 'DisplayName', 'Mars')
+
+xlabel('x / |r_{EM}|')
+ylabel('y / |r_{EM}|')
+zlabel('z / |r_{EM}|')
+title('Earth/Mars-Fixed Pulsating Frame')
 legend
 axis equal
 
 lim = 3;
-xlim([-1,1]*lim)
-ylim([-1,1]*lim)
-zlim([-1,1]*lim)
+xlim([-1, 1] * lim)
+ylim([-1, 1] * lim)
+zlim([-1, 1] * lim)
 
-figure(3);
+view(3)
+grid on
+
+%% Plot inertial frame
+figure(4)
 clf
-plot3(inertial_frame_all(:, 1), inertial_frame_all(:, 2), inertial_frame_all(:, 3), '.k', 'Clipping','off', 'DisplayName', 'Trajectory'); hold on
+hold on
 
+for n = 1:num_orbits
+    inertial_seg = inertial_frame_all{n};
+    plot3(inertial_seg(:,1), inertial_seg(:,2), inertial_seg(:,3), ...
+        'LineWidth', 2, ...
+        'Color', colors(n,:), ...
+        'DisplayName', sprintf('Trajectory %d', n), ...
+        'Clipping', 'off');
+end
+
+plot_orbit(r0,   v0,   mu, 'DisplayName', 'Earth Orbit', 'LineStyle', '--', 'LineWidth', 1.5);
+plot_orbit(r0_2, v0_2, mu, 'DisplayName', 'Mars Orbit',  'LineStyle', '--', 'LineWidth', 1.5);
+
+plot3(r0(1),   r0(2),   r0(3),   '.b', 'MarkerSize', 40, 'DisplayName', 'Earth Start')
+plot3(r0_2(1), r0_2(2), r0_2(3), '.r', 'MarkerSize', 40, 'DisplayName', 'Mars Start')
+
+xlabel('X')
+ylabel('Y')
+zlabel('Z')
+title('Inertial Frame')
 legend
 axis equal
+view(3)
+grid on
 
 function draw_sphere(radius, origin, x_lim, y_lim, z_lim, varargin)
 num_points = 200;
