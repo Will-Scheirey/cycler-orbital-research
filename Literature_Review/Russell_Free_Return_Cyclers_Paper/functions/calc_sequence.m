@@ -101,7 +101,7 @@ for j = 1:num_hi
         continue
     end
 
-    deltas = zeros(fj - 1, 1);
+    deltas = zeros(fj, 1);
 
     for k = 1:fj
         theta_earth_j(k) = theta_earth;
@@ -130,6 +130,13 @@ for j = 1:num_hi
 
         v_inf_minus_local_j{k} = vd_local;
         v_inf_minus_j{k} = C * vd_local;
+
+        if k >= 2
+            v_prev = v_inf_minus_local_j{k-1};
+            v_curr = v_inf_minus_local_j{k};
+
+            deltas(k-1) = acos(dot(v_prev, v_curr) / (norm(v_prev)*norm(v_curr)));
+        end
     end
 
     theta_earth_j(fj + 1) = theta_earth;
@@ -138,9 +145,14 @@ for j = 1:num_hi
     v_inf_minus_local_j{fj + 1} = vd_restart_local;
     v_inf_minus_j{fj + 1} = C * vd_restart_local;
 
+    v_prev = v_inf_minus_local_j{fj+1};
+    v_curr = v_inf_minus_local_j{fj};
+
+    deltas(fj) = acos(dot(v_prev, v_curr) / (norm(v_prev)*norm(v_curr)));
+
     v_inf_minus_all{j}       = v_inf_minus_j;
     v_inf_minus_local_all{j} = v_inf_minus_local_j;
-    deltas_all{j}            = deltas;
+    deltas_all{j}            = deltas';
     dt_years_all{j}          = dt_years;
     theta_earth_all{j}       = theta_earth_j;
 end

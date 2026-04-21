@@ -2,7 +2,8 @@ clear; clc; close all
 load_params
 
 %% Run Algorithm
-solution_str = '2.5.1.+0';
+% solution_str = '2.5.1.+0';
+solution_str = '1.0.1.-1'
 
 str_parts = split(solution_str, '.');
 
