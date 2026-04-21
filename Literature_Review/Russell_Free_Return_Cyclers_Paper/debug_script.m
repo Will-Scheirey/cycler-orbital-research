@@ -2,25 +2,16 @@ clear; clc; close all
 load_params
 
 %% Run Algorithm
-
-p_targ = 1; % Number of synodic periods for the cycler
-h_targ = 3; % Number of half-years
-s_targ = 1; % Number of identical generic returns
-i_targ = 5; % Number of revolutions made by generic return
-
-fast = true;
-long = false;
-
 solution_str = '2.5.1.+0';
-% solution_str = '4.3.1.-5';
 
 str_parts = split(solution_str, '.');
 
-p_targ = str2double(str_parts(1));
+p_targ = abs(str2double(str_parts(1)));
 h_targ = str2double(str_parts(2));
 s_targ = str2double(str_parts(3));
 
 fast = contains(str_parts(4), '-');
+long = contains(str_parts(1), '-');
 
 i_targ = str2double(erase(str_parts(4), '-'));
 
@@ -66,16 +57,19 @@ lim = r_b2 * 1.1;
 solution = target_solutions{1};
 [orbits, pos_all] = plot_solution(solution, mu, vd, r_b1, v_b1, theta_b1_turn, lim/20);
 
-plot_intersection(r0, lim/20, "0")
-plot_intersection(r_intersect_vec, lim/20, "1")
+plot_intersection(r0, lim/20, "0", 'b')
+plot_intersection(r_intersect_vec, lim/20, "1", 'r')
 plot_intersection(r_end, lim/20, "end")
 plot_intersection(r0_2, lim/20, "Mars Start")
 
 view(2)
 
 title(sprintf("Solutions for %s", solution_str));
-
+grid on
 axis equal
+xlabel("X");
+ylabel("Y");
+zlabel("Z");
 
 figure(2)
 clf
@@ -102,12 +96,22 @@ for n = 1:length(v_local_flat)
     min_z = min(min_z, v_local(3));
 end
 
-v_inf_norm = norm(v_inf_flat{1});
-draw_sphere(v_inf_norm, [0, 0, 0], [-inf, inf], [-inf, inf], [min_z, inf], ...
+draw_sphere(v_b1, [0, 0, 0], [-inf, inf], [-inf, inf], [-inf, inf], ...
     'FaceAlpha', 0.1, ...
     'FaceColor', 'blue', ...
     'LineStyle', 'none', ...
     'DisplayName', 'Primary Velocity Sphere');
+
+v_inf_norm = norm(v_inf_flat{1});
+draw_sphere(v_inf_norm, [0, 0, v_b1], [-inf, inf], [-inf, inf], [-inf, inf], ...
+    'FaceAlpha', 0.1, ...
+    'FaceColor', [0.2, 0.2, 0.2], ...
+    'LineStyle', 'none', ...
+    'DisplayName', 'V_\infty Sphere');
+
+quiver3(0, 0, 0, 0, 0, v_b1, 'Color', 'blue', 'AutoScale', 'off', 'LineWidth', 3, 'DisplayName', 'Earth Velocity')
+
+plot3(0, 0, 0, '.b', 'MarkerSize', 30, 'HandleVisibility', 'off')
 
 hold on
 
@@ -135,7 +139,7 @@ for n = 1:num_print
         v_inf(1), v_inf(2), v_inf(3), norm(v_inf), ...
         v(1), v(2), v(3), norm(v));
 
-    quiver3(0, 0, 0, v(1), v(2), v(3), ...
+    quiver3(0, 0, v_b1, v(1), v(2), v(3), ...
         'LineWidth', 3, ...
         'Color', colors(n, :), ...
         'DisplayName', sprintf('V inf %d', n), ...
@@ -148,7 +152,7 @@ axis equal
 xlabel("X")
 ylabel("Y")
 zlabel("Z (Earth Velocity)")
-title("Local Frame")
+title("Inertial Frame")
 
 num_orbits = length(pos_all);
 num_plot   = 1000;
@@ -197,6 +201,7 @@ for n = 1:num_orbits
     t0 = t0 + tof;
 end
 
+return
 %% Plot pulsating Earth/Mars-fixed frame
 figure(3)
 clf

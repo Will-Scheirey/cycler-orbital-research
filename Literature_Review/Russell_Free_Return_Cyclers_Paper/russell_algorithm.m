@@ -5,7 +5,7 @@ sol_all = [];
 tof = identical_s_tof(tau, p, h, s) * year2sec;
 if tof < 0
     N_max = -1;
-    return;
+    return
 end
 
 theta_b1 = mean_motion * tof;
@@ -23,7 +23,6 @@ sol_all = struct();
 sol_idx = 1;
 
 for i = 1:N_max+1
-
     struct_save = struct();
 
     for z = 1:4
@@ -31,33 +30,46 @@ for i = 1:N_max+1
         vd = vd_all{i, z};
         va = va_all{i, z};
 
+        if isempty(vd) || isempty(va) || ~isfinite(a)
+            continue
+        end
+
         [v_inf_minus_all, deltas_all, hi, dt_years_all, C, v_inf_minus_local_all, theta_earth_all] = ...
             calc_sequence(vd, va, h, s, v0, v1, theta_b1);
 
-        if isempty(v_inf_minus_all), continue; end
-        if isempty(v_inf_minus_all{1}), continue; end
+        if isempty(v_inf_minus_all)
+            continue
+        end
+        if isempty(v_inf_minus_all{1})
+            continue
+        end
+        if isempty(v_inf_minus_all{1}{1})
+            continue
+        end
 
         v_inf = norm(v_inf_minus_all{1}{1});
 
         ra = ra_from_rv(r0, vd, mu);
-        [AR, TR, feasible, max_delta] = is_feasible(a, rp_min, mu_b1, r_b2, v_inf, deltas_all, TR_min, AR_min, ra);
+        [AR, TR, feasible, max_delta_req, delta_max_phys] = ...
+            is_feasible(a, rp_min, mu_b1, r_b2, v_inf, deltas_all, TR_min, AR_min, ra);
 
         sol_type = sol_type_all{z};
 
         struct_temp = struct( ...
-            'v_inf',      v_inf, ...
-            'AR',         AR, ...
-            'TR',         TR, ...
-            'feasible',   feasible, ...
-            'max_delta',  max_delta, ...
-            'i',          i-1, ...
-            'va',         va, ...
-            'vd',         vd, ...
-            'fast',       sol_type{1}, ...
-            'long',       sol_type{2}, ...
-            'h_i',        hi, ...
-            'rotm',       C, ...
-            's',          s ...
+            'v_inf',         v_inf, ...
+            'AR',            AR, ...
+            'TR',            TR, ...
+            'feasible',      feasible, ...
+            'max_delta',     max_delta_req, ...
+            'delta_max',     delta_max_phys, ...
+            'i',             i-1, ...
+            'va',            va, ...
+            'vd',            vd, ...
+            'fast',          sol_type{1}, ...
+            'long',          sol_type{2}, ...
+            'h_i',           hi, ...
+            'rotm',          C, ...
+            's',             s ...
             );
 
         struct_temp.dt_years        = dt_years_all;
@@ -72,5 +84,36 @@ for i = 1:N_max+1
     sol_all.(sprintf('rev_%d', sol_idx)) = struct_save;
     sol_idx = sol_idx + 1;
 end
+
+end
+
+function [AR, TR, feasible, max_delta_req, delta_max_phys] = is_feasible(a, rp_min, mu, r_b2, v_inf_mag, deltas, TR_min, AR_min, ra)
+
+AR = ra / r_b2;
+
+e = 1 + (rp_min * v_inf_mag^2) / mu;
+delta_max_phys = 2 * asin(1 / e);
+
+max_delta_req = 0;
+
+if iscell(deltas)
+    for i = 1:numel(deltas)
+        di = deltas{i};
+        if isempty(di)
+            continue
+        end
+        max_delta_req = max(max_delta_req, max(di(:)));
+    end
+elseif ~isempty(deltas)
+    max_delta_req = max(deltas(:));
+end
+
+if max_delta_req == 0
+    TR = Inf;
+else
+    TR = delta_max_phys / max_delta_req;
+end
+
+feasible = (TR > TR_min) && (AR > AR_min);
 
 end
