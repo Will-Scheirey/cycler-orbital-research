@@ -37,6 +37,11 @@ for i = 1:length(solutions)
             else
                 this_solution.direction = '+';
             end
+            if this_solution.long
+                this_solution.orbit_direction = '-';
+            else
+                this_solution.orbit_direction = '+';
+            end
             feasible_solutions{feasible_idx} = this_solution;
             feasible_idx = feasible_idx + 1;
         end

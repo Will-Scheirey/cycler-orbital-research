@@ -14,6 +14,9 @@ function formattedString = formatValue(value)
             formattedString = sprintf('%0.3e', value);
         else
             formattedString = sprintf('%0.3f', value);
+            if (abs(value - round(value)) / value ) < 1e-12
+                formattedString = sprintf('%d', value);
+            end
         end
     % Numeric arrays
     elseif isnumeric(value) && ~isscalar(value)

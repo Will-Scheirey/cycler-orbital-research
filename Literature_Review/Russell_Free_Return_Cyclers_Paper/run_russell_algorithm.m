@@ -24,5 +24,5 @@ end
 
 %% Processing
 
-feasible_solutions = get_feasible_solutions(solutions);
+feasible_solutions = get_feasible_solutions(solutions, false);
 print_solutions(feasible_solutions)

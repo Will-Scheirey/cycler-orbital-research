@@ -10,7 +10,7 @@ v_inf_1 = norm(v_inf_1_vec);
 
 phi_fr = -asin(v_inf / (2*ve_dep));
 
-u = (v_inf_1_vec' * ve_vec_dep) / (v_inf * ve_dep);
+u = (v_inf_1_vec' * ve_vec_arr) / (v_inf * ve_arr);
 u = max(-1,min(1,u));
 phi_gr = asin(u);
 end

@@ -2,8 +2,7 @@ clear; clc; close all
 load_params
 
 %% Run Algorithm
-% solution_str = '2.5.1.+0';
-solution_str = '1.0.1.-1'
+solution_str = '+2.5.1.+0';
 
 str_parts = split(solution_str, '.');
 
@@ -71,6 +70,7 @@ axis equal
 xlabel("X");
 ylabel("Y");
 zlabel("Z");
+legend
 
 figure(2)
 clf
@@ -90,6 +90,8 @@ for s_idx = 1:solution.s
         v_inf_flat{end+1,1}   = v_inf_s{k};
     end
 end
+
+fprintf('TR: %0.2f; AR: %0.2f', solution.TR, solution.AR)
 
 min_z = inf;
 for n = 1:length(v_local_flat)
@@ -128,24 +130,38 @@ for n = 1:num_print
 
     v_inf = v_inf_flat{n};
     v     = v_local_flat{n};
-
+    
+    %{
     fprintf("Segment %d\n" + ...
-        "\tr0:    (%0.2f, %0.2f, %0.2f) AU; mag %0.2f\n" + ...
-        "\tv0:    (%0.2f, %0.2f, %0.2f) km/s; mag %0.2f\n" + ...
-        "\tv_inf: (%0.2f, %0.2f, %0.2f) km/s; mag %0.2f\n" + ...
         "\tv_inf_FRAME: (%0.2f, %0.2f, %0.2f) km/s; mag %0.2f\n\n", ...
         n, ...
-        r0_sc(1), r0_sc(2), r0_sc(3), norm(r0_sc), ...
-        v0_sc(1), v0_sc(2), v0_sc(3), norm(v0_sc), ...
-        v_inf(1), v_inf(2), v_inf(3), norm(v_inf), ...
         v(1), v(2), v(3), norm(v));
-
+    %}
+    
     quiver3(0, 0, v_b1, v(1), v(2), v(3), ...
         'LineWidth', 3, ...
         'Color', colors(n, :), ...
         'DisplayName', sprintf('V inf %d', n), ...
         'AutoScale', 'off');
     hold on
+end
+
+R1 = v_b1;
+R2 = v_inf_norm;
+d  = v_b1;
+
+if d > R1 + R2 || d < abs(R1 - R2) || d == 0
+    warning('The two spheres do not intersect in a circle')
+else
+    zc = (R1^2 - R2^2 + d^2) / (2*d);
+    rc = sqrt(R1^2 - zc^2);
+
+    theta = linspace(0, 2*pi, 500);
+    x = rc * cos(theta);
+    y = rc * sin(theta);
+    z = zc * ones(size(theta));
+
+    plot3(x, y, z, 'k-', 'LineWidth', 2, 'DisplayName', 'Sphere Intersection');
 end
 
 legend

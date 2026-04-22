@@ -29,7 +29,7 @@ variable_names{3} = 'TR';
 variable_names{4} = 'V_inf';
 
 for n = 1:max_num_turn_angles
-    variable_names{4 + n} = sprintf('Turn Angle #%d', n);
+    variable_names{4 + n} = sprintf('TA %d', n);
 end
 
 for i = 1:num_feasible
@@ -37,7 +37,7 @@ for i = 1:num_feasible
     if isempty(sol)
         continue
     end
-    rows{i, 1} = sprintf('%d.%d.%d.%s%d', sol.p, sol.h, sol.s, sol.direction, sol.i);
+    rows{i, 1} = sprintf('%s%d.%d.%d.%s%d', sol.orbit_direction, sol.p, sol.h, sol.s, sol.direction, sol.i);
     rows{i, 2}   = sol.AR;
     rows{i, 3}   = sol.TR;
     rows{i, 4} = sol.v_inf;
@@ -45,7 +45,7 @@ for i = 1:num_feasible
 
     for n = 1:max_num_turn_angles
         if n <= length(deltas)
-            delta = rad2deg(deltas(n));
+            delta = round(rad2deg(deltas(n)));
         else
             delta = '--';
         end
