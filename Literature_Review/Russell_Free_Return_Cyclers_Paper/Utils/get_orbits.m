@@ -17,21 +17,17 @@ for s = 1:num_s
     v_inf_minus_s = solution.v_inf_minus{s};
     v_local_s     = solution.v_local{s};
     dt_years_s    = solution.dt_years{s};
+
+    if s < num_s
+        dt_years_s = [dt_years_s; dt];
+    end
+
     theta_s       = solution.theta_earth_all{s};
 
     num_k = length(v_inf_minus_s);
 
-    if s > 1
-        k_min = 1;
-    else
-        k_min = 2;
-    end
-
-    if s < num_s
-        k_max = num_k;
-    else
-        k_max = num_k - 1;
-    end
+    k_min = 2;
+    k_max = num_k - 1;
 
     for k = k_min:k_max
         theta_earth = theta_s(k);
@@ -60,8 +56,8 @@ for s = 1:num_s
     v1 = v_b1 * [-sin(theta_earth); cos(theta_earth); 0];
 
     Rz = [cos(theta_earth), -sin(theta_earth), 0;
-          sin(theta_earth),  cos(theta_earth), 0;
-          0,                 0,                1];
+        sin(theta_earth),  cos(theta_earth), 0;
+        0,                 0,                1];
 
     vd = Rz * vd_generic;
 

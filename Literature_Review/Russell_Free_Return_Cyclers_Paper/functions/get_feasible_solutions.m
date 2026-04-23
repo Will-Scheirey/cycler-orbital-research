@@ -12,6 +12,10 @@ for i = 1:length(solutions)
     solution = solutions{i};
     rev_data = solution.rev_data;
 
+    if isempty(rev_data)
+        continue;
+    end
+
     rev_num = fieldnames(rev_data);
 
     for n = 1:length(rev_num)

@@ -4,6 +4,7 @@ clear; clc; close all
 
 load_params
 all_sol_idx = 1;
+solutions = {};
 
 for p = 1:p_max
     for h = 0:h_max
@@ -24,5 +25,16 @@ end
 
 %% Processing
 
+if isempty(solutions)
+    disp("No solutions!")
+    return
+end
+
 feasible_solutions = get_feasible_solutions(solutions, false);
+
+if isempty(feasible_solutions)
+    disp("No feasible solutions!")
+    return
+end
+
 print_solutions(feasible_solutions)

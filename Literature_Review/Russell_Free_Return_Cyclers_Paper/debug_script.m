@@ -2,7 +2,8 @@ clear; clc; close all
 load_params
 
 %% Run Algorithm
-solution_str = '+2.5.1.+0';
+% solution_str = '+5.24.1.+7';
+solution_str = '+5.1.5.+0';
 
 str_parts = split(solution_str, '.');
 
@@ -39,10 +40,6 @@ v0_2 = v_b2 * [-sin(mars_theta0); cos(mars_theta0); 0];
 
 r_intersect_vec = r_intersect * [cos(theta_intersect); sin(theta_intersect); 0];
 
-theta_end = p_targ * angle_turn;
-
-r_end = r_b1 * [cos(theta_end); sin(theta_end); 0];
-
 %% PLOT
 
 figure(1)
@@ -59,10 +56,9 @@ solution = target_solutions{1};
 
 plot_intersection(r0, lim/20, "0", 'b')
 plot_intersection(r_intersect_vec, lim/20, "1", 'r')
-plot_intersection(r_end, lim/20, "end")
 plot_intersection(r0_2, lim/20, "Mars Start")
 
-view(2)
+% view(2)
 
 title(sprintf("Solutions for %s", solution_str));
 grid on
@@ -71,6 +67,9 @@ xlabel("X");
 ylabel("Y");
 zlabel("Z");
 legend
+
+xlim([-1,1] * r_b2)
+ylim([-1,1] * r_b2)
 
 figure(2)
 clf
@@ -91,7 +90,7 @@ for s_idx = 1:solution.s
     end
 end
 
-fprintf('TR: %0.2f; AR: %0.2f', solution.TR, solution.AR)
+fprintf('TR: %0.2f; AR: %0.2f\n', solution.TR, solution.AR)
 
 min_z = inf;
 for n = 1:length(v_local_flat)
@@ -170,7 +169,7 @@ xlabel("X")
 ylabel("Y")
 zlabel("Z (Earth Velocity)")
 title("Inertial Frame")
-
+return
 num_orbits = length(pos_all);
 num_plot   = 1000;
 
@@ -218,7 +217,6 @@ for n = 1:num_orbits
     t0 = t0 + tof;
 end
 
-return
 %% Plot pulsating Earth/Mars-fixed frame
 figure(3)
 clf

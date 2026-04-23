@@ -19,7 +19,7 @@ h_hat = h / norm(h);
 e_vec = ((v0n^2 - mu/r0n)*r0 - dot(r0,v0)*v0)/mu;
 e = norm(e_vec);
 
-times = linspace(t_lim(1), t_lim(2), 1e3);
+times = linspace(t_lim(1), t_lim(2), 1e4);
 
 x = zeros(size(times));
 y = zeros(size(times));

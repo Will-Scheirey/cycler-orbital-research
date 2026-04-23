@@ -141,6 +141,8 @@ for j = 1:num_hi
 
     theta_earth_j(fj + 1) = theta_earth;
 
+    theta_earth = theta_earth + theta_generic;
+
     vd_restart_local = [-vd0(1); vd0(2); vd0(3)];
     v_inf_minus_local_j{fj + 1} = vd_restart_local;
     v_inf_minus_j{fj + 1} = C * vd_restart_local;
@@ -149,6 +151,7 @@ for j = 1:num_hi
     v_curr = v_inf_minus_local_j{fj};
 
     deltas(fj) = acos(dot(v_prev, v_curr) / (norm(v_prev)*norm(v_curr)));
+    
 
     v_inf_minus_all{j}       = v_inf_minus_j;
     v_inf_minus_local_all{j} = v_inf_minus_local_j;
@@ -193,7 +196,7 @@ end
 
 function [delta_c, delta_a, delta_minimax, delta_min, lambda_a, lambda_b, lambda] = calc_deltas(phi_gr, phi_fr, fj)
 
-lambda_a  = pi / (fj - 2);
+lambda_a  = 0;
 lambda_b  = 0;
 lambda    = 0;
 
@@ -203,9 +206,13 @@ delta_c   = pi - 2 * abs(phi_gr);
 
 if fj == 1
     delta_minimax = delta_c;
+
 elseif fj == 2
     delta_minimax = acos(sin(phi_gr) * sin(phi_fr));
-elseif fj > 2
+
+else
+    lambda_a  = pi / (fj - 2);
+
     delta_min = acos(cos(phi_fr)*cos(phi_gr) + sin(phi_fr)*sin(phi_gr));
     delta_a   = acos(cos(phi_fr)^2 * cos(lambda_a) + sin(phi_fr)^2);
 
@@ -214,8 +221,9 @@ elseif fj > 2
     else
         lb  = @(l) (pi - 2*l) / (fj - 2);
         fcn = @(l) cos(phi_fr)^2*cos(l)*cos(lb(l) + l) - cos(phi_fr)*cos(l)*cos(phi_gr) + ...
-            cos(phi_fr)^2*sin(l)*sin(lb(l) + l) + sin(phi_fr)^2 - sin(phi_fr)*sin(phi_gr);
-        l   = fsolve(fcn, 0, optimset('Display', 'off'));
+                   cos(phi_fr)^2*sin(l)*sin(lb(l) + l) + sin(phi_fr)^2 - sin(phi_fr)*sin(phi_gr);
+
+        l = fsolve(fcn, 0, optimset('Display', 'off'));
 
         delta_minimax = acos(cos(phi_gr)*cos(phi_fr)*cos(l) + sin(phi_gr)*sin(phi_fr));
 
