@@ -1,4 +1,5 @@
 function print_solutions(solutions)
+
 num_feasible = length(solutions);
 
 if num_feasible == 1
@@ -37,6 +38,7 @@ for i = 1:num_feasible
     if isempty(sol)
         continue
     end
+
     rows{i, 1} = sprintf('%s%d.%d.%d.%s%d', sol.orbit_direction, sol.p, sol.h, sol.s, sol.direction, sol.i);
     rows{i, 2}   = sol.AR;
     rows{i, 3}   = sol.TR;
@@ -52,6 +54,11 @@ for i = 1:num_feasible
         rows{i, 4+n} = delta;
     end
 
+end
+
+if all(cellfun(@isempty, rows(:)))
+    warning('No valid retrograde cyclers!')
+    return
 end
 
 FormattedTable.Display(variable_names, rows);

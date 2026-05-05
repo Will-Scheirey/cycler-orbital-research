@@ -2,8 +2,7 @@ clear; clc; close all
 load_params
 
 %% Run Algorithm
-% solution_str = '+5.24.1.+7';
-solution_str = '+5.1.5.+0';
+solution_str = '-12.44.1.+3';
 
 str_parts = split(solution_str, '.');
 
@@ -20,7 +19,7 @@ i_targ = str2double(erase(str_parts(4), '-'));
 
 data = struct('p', p_targ, 'h', h_targ, 's', s_targ, 'N_max', N_max, 'tof', tof, 'rev_data', rev_all);
 
-feasible_solutions = get_feasible_solutions({data}, true);
+feasible_solutions = get_feasible_solutions({data});
 
 target_solutions = get_solution(p_targ, h_targ, s_targ, i_targ, feasible_solutions, fast, long);
 
@@ -56,20 +55,21 @@ solution = target_solutions{1};
 
 plot_intersection(r0, lim/20, "0", 'b')
 plot_intersection(r_intersect_vec, lim/20, "1", 'r')
-plot_intersection(r0_2, lim/20, "Mars Start")
+% plot_intersection(r0_2, lim/20, "Mars Start")
 
 % view(2)
 
-title(sprintf("Solutions for %s", solution_str));
+title(sprintf("Solution for %s", solution_str));
 grid on
 axis equal
-xlabel("X");
-ylabel("Y");
-zlabel("Z");
-legend
+xlabel("X (km)");
+ylabel("Y (km)");
+zlabel("Z (km)");
+legend('Location', 'northeast')
 
-xlim([-1,1] * r_b2)
-ylim([-1,1] * r_b2)
+
+% xlim([-1,1] * r_b2)
+% ylim([-1,1] * r_b2)
 
 figure(2)
 clf
@@ -111,14 +111,15 @@ draw_sphere(v_inf_norm, [0, 0, v_b1], [-inf, inf], [-inf, inf], [-inf, inf], ...
     'LineStyle', 'none', ...
     'DisplayName', 'V_\infty Sphere');
 
-quiver3(0, 0, 0, 0, 0, v_b1, 'Color', 'blue', 'AutoScale', 'off', 'LineWidth', 3, 'DisplayName', 'Earth Velocity')
+quiver3(0, 0, 0, 0, 0, v_b1, 'Color', 'blue', 'AutoScale', 'off', 'LineWidth', 1, 'DisplayName', 'Earth Velocity')
 
 plot3(0, 0, 0, '.b', 'MarkerSize', 30, 'HandleVisibility', 'off')
+
 
 hold on
 
 num_vec = length(v_local_flat);
-colors = turbo(num_vec);
+colors = jet(num_vec);
 
 num_print = min(length(pos_all), num_vec);
 
@@ -141,7 +142,7 @@ for n = 1:num_print
         'LineWidth', 3, ...
         'Color', colors(n, :), ...
         'DisplayName', sprintf('V inf %d', n), ...
-        'AutoScale', 'off');
+        'AutoScale', 'off', 'MaxHeadSize', 3);
     hold on
 end
 
@@ -163,11 +164,11 @@ else
     plot3(x, y, z, 'k-', 'LineWidth', 2, 'DisplayName', 'Sphere Intersection');
 end
 
-legend
+legend('Location', 'northeast')
 axis equal
-xlabel("X")
-ylabel("Y")
-zlabel("Z (Earth Velocity)")
+xlabel("X (km/s)")
+ylabel("Y (km/s)")
+zlabel("Z (km/s) (Earth Velocity)")
 title("Inertial Frame")
 return
 num_orbits = length(pos_all);
@@ -275,7 +276,7 @@ xlabel('X')
 ylabel('Y')
 zlabel('Z')
 title('Inertial Frame')
-legend
+legend('Location', 'best')
 axis equal
 view(3)
 grid on

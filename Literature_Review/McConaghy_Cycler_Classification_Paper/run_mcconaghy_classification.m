@@ -14,11 +14,11 @@ T_transfer = T_ratio * 3600*24*365;
 
 S = 1 / (1/T_earth - 1/T_mars);
 
-ns = 1:8;
+ns = 1:4;
 
 thetas = linspace(0, 2*pi, 100);
 
-max_revs = 5;
+max_revs = 6;
 
 for i = 1:length(ns)
     subplot(length(ns), max_revs, 1+(i-1)*max_revs)
@@ -55,7 +55,7 @@ for i = 1:length(ns)
     theta = omega_earth * tof;      % radians
     R2 = r_earth_sun * [cos(2*pi*tof/T_earth); sin(2*pi*tof/T_earth); 0];
 
-    [v_D_list, v_A_list] = lambert(R1, R2, tof, mu_sun, 1200, 1000);
+    [v_D_list, v_A_list] = lambert_curtis(R1, R2, tof, mu_sun, 1200, 1000);
 
     sqr = ceil(sqrt(length(v_D_list)));
     sqr1 = ceil(length(v_D_list) / sqr);
@@ -73,7 +73,7 @@ for i = 1:length(ns)
 
         subplot(length(ns), max_revs, 1+(i-1)*max_revs + floor(revs))
 
-        plot_orbit_from_state(R1, v_D, mu_sun, '-k', 1); hold on
+        plot_orbit_from_state(R1, v_D, mu_sun, tof, 'LineStyle', '-', 'Color', 'k', 'LineWidth', 1.5); hold on
 
         axis equal
 
@@ -82,7 +82,7 @@ for i = 1:length(ns)
 end
 
 sgtitle("Earth Cycler Orbits from Lambert's Problem")
-fontsize(16,"points")
+fontsize(12,"points")
 
 
 function T = orbital_period(r_vec, v_vec, mu)

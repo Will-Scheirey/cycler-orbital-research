@@ -30,7 +30,7 @@ num_e   = 50;
 num_phi = 50;
 phi_all = linspace(0, 4*pi, num_phi);
 
-n_syn = 1;
+n_syn = 5;
 r0 = a_eu;
 n0 = n_eu;
 
@@ -99,7 +99,7 @@ histogram(costs_pro, bins, 'Normalization','percentage', 'LineStyle', 'none')
 title("Prograde")
 ylim([0, 300/num_bins])
 xlabel("Cost")
-ylabel("Number of Solutions")
+ylabel("% of Solutions")
 
 figure(2)
 clf
@@ -107,21 +107,21 @@ histogram(costs_ret, bins, 'Normalization','percentage', 'LineStyle', 'none')
 title("Retrograde")
 ylim([0, 300/num_bins])
 xlabel("Cost")
-ylabel("Number of Solutions")
+ylabel("% of Solutions")
 
-%{
+
 figure(3)
 clf
-C = cell2mat(costs_all_pro);
+C = cell2mat(costs_all_ret) / r_jupiter;
 [globalMin, linearIdx] = min(C, [], 'all');
 [i, j, k, w] = ind2sub(size(C), linearIdx); % For a 3D array
 
-guess  = flybys_all_pro{i, j, k};
-
+guess  = flybys_all_ret{i, j, k};
 
 phi_i = phi_all(k);
 plot_guess(guess, a_io, a_eu, a_ga, mu, n0, r_all, phi_i, w)
-%}
+title(sprintf("Total Cost: %d", round(globalMin)))
+
 
 function cost = cost_fcn(guess, r_all, direction)
     num_bodies = length(r_all);
@@ -130,14 +130,20 @@ function cost = cost_fcn(guess, r_all, direction)
     guess_flybys = direction1{1};
     
     closest   = zeros(num_bodies, 1);
+    cost = 0;
     for n = 1:num_bodies
         dist1 = guess_flybys{n, 1}{3};
         dist2 = guess_flybys{n, 2}{3};
 
         closest(n) = min(dist1, dist2);
+
+        if ~isfinite(dist1), dist1 = 0; end
+        if ~isfinite(dist2), dist2 = 0; end
+
+        cost = cost + dist1 + dist2;
     end
 
-    cost = sum(closest);
+    % cost = sum(closest);
 end
 
 function plot_guess(guess, a_io, a_eu, a_ga, mu, n0, r_all, phi, w)
@@ -175,14 +181,14 @@ for n = 1:num_bodies
     rsc1 = guess_flybys{n, 1}{2};
     rsc2 = guess_flybys{n, 2}{2};
 
-    % p = plot(rb1(1), rb1(2), 'rx', 'DisplayName', "Intersect 1", 'MarkerSize', 20, 'LineWidth', 2);
+    p = plot(rb1(1), rb1(2), 'rx', 'DisplayName', "Intersect 1", 'MarkerSize', 20, 'LineWidth', 2);
     if n ~= 1, p.HandleVisibility = 'off'; end
 
-    % p = plot(rb2(1), rb2(2), 'bx', 'DisplayName', "Intersect 2", 'MarkerSize', 20, 'LineWidth', 2);
+    p = plot(rb2(1), rb2(2), 'bx', 'DisplayName', "Intersect 2", 'MarkerSize', 20, 'LineWidth', 2);
     if n ~= 1, p.HandleVisibility = 'off'; end
 
-    % plot(rsc1(1), rsc1(2), 'rx', 'DisplayName', sprintf("SC at Body %d Intersect 1", n), 'MarkerSize', 20, 'LineWidth', 2, 'HandleVisibility', 'off')
-    % plot(rsc2(1), rsc2(2), 'bx', 'DisplayName', sprintf("SC at Body %d Intersect 2", n), 'MarkerSize', 20, 'LineWidth', 2, 'HandleVisibility', 'off')
+    plot(rsc1(1), rsc1(2), 'rx', 'DisplayName', sprintf("SC at Body %d Intersect 1", n), 'MarkerSize', 20, 'LineWidth', 2, 'HandleVisibility', 'off')
+    plot(rsc2(1), rsc2(2), 'bx', 'DisplayName', sprintf("SC at Body %d Intersect 2", n), 'MarkerSize', 20, 'LineWidth', 2, 'HandleVisibility', 'off')
 
     t0         = phi / n0;
     theta_body = mean_motion(r_all(n), mu) * t0;

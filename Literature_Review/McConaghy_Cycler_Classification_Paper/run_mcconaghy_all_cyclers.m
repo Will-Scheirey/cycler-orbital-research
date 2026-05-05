@@ -49,14 +49,14 @@ for i = 1:length(ns)
     theta = omega_earth * tof;      % radians
     R2 = r_earth_sun * [cos(2*pi*tof/T_earth); sin(2*pi*tof/T_earth); 0];
 
-    [v_D_list, v_A_list] = lambert(R1, R2, tof, mu_sun, 1200, 1000);
+    [v_D_list, v_A_list] = lambert_curtis(R1, R2, tof, mu_sun, 1200, 1000);
 
     for z = 1:numel(v_D_list)
         V1 = v_D_list{z};
         good = eval_transfer(R1, V1, r_mars_sun, mu_sun, mu_earth, 6378, angle_turn);
 
         if good
-            plot_orbit_from_state(R1, V1, mu_sun, '-k', 0.2); hold on
+            plot_orbit_from_state(R1, V1, mu_sun, tof, 'LineStyle', '-', 'Color', 'k', 'LineWidth', 1.5); hold on
         end
     end
 end

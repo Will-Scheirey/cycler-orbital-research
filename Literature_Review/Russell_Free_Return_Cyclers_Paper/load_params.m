@@ -1,29 +1,8 @@
-% mu = 132712000000;
+% [mu, mu_b1, mu_b2, r_b1, r_b2, min_rp] = load_jupiter_moons_russel();
+[mu, mu_b1, mu_b2, r_b1, r_b2, min_rp] = load_earth_mars_russell();
 
-%{
-[mu, mu_b1, mu_b2, r_b1, r_b2, ~, ~, tau] = get_ideal_earth_mars_params();
-min_rp = 6378;
-%}
-
-% %{
-jupiter_moons = get_jupiter_moon_params();
-
-mu = jupiter_moons.mu_primary;
-mu_b1 = jupiter_moons.io.mu;
-mu_b2 = jupiter_moons.europa.mu;
-
-r_b1 = jupiter_moons.io.r_primary;
-r_b2 = jupiter_moons.europa.r_primary;
-
-min_rp = jupiter_moons.io.r;
-
-% %}
-% sec2day = 1 / (3600 * 24);
-% sec2year = sec2day / 365;
-% year2sec = 1 / sec2year;
-
-sec2year = 2*pi*sqrt(r_b1^3 / mu);
-year2sec = 1 / sec2year;
+year2sec = 2*pi*sqrt(r_b1^3 / mu);
+sec2year = 1 / year2sec;
 
 % AU = 149597871; % [km]
 AU = r_b1;
@@ -42,10 +21,15 @@ tau = tau * sec2year;
 
 AR_min = 0.9;
 TR_min = 0.85;
-p_max = 5;
+
+p_min = 1;
+p_max = 15;
+
+h_min = 0;
+s_min = 1;
 
 h_max = 5*p_max;
-s_max = 3*p_max;
+s_max = 5*p_max;
 
 r0 = [r_b1; 0; 0];
 r0_2 = [r_b2; 0; 0];

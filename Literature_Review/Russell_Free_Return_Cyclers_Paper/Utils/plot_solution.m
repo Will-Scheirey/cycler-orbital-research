@@ -3,7 +3,7 @@ function [orbits, pos_all] = plot_solution(solution, mu, vd_generic, r_b1, v_b1,
 orbits = get_orbits(solution, mu, vd_generic, r_b1, v_b1, theta_generic);
 num_orbits = numel(orbits);
 
-colors = turbo(num_orbits);
+colors = jet(num_orbits) * 0.9;
 lw = 3;
 
 pos_all = cell(num_orbits, 1);
@@ -30,12 +30,14 @@ for n = 1:num_orbits
     
     hold on
     
+    %{
     if n == 1
         quiver3(r0(1), r0(2), r0(3), vd(1), vd(2), vd(3), r_b1/10, ...
             'HandleVisibility', 'off', ...
             'Color', [colors(n, :), 0.2], ...
             'LineWidth', lw);
     end
+    %}
     %{
     quiver3(r0(1), r0(2), r0(3), ve(1), ve(2), ve(3), 5e6, ...
         'HandleVisibility', 'off', ...
@@ -53,7 +55,7 @@ for n = 1:num_orbits
 
     pos_all{n} = {r0, vd, tof};
 end
-
+% return
 % Group identical/sufficiently-close start locations so they get one label
 r0_locs = {};
 r0_nums = {};

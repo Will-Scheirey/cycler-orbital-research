@@ -1,8 +1,14 @@
-function feasible_solutions = get_feasible_solutions(solutions, allow_all)
-
-if nargin < 2
-    allow_all = false;
+function feasible_solutions = get_feasible_solutions(solutions, options)
+arguments
+    solutions cell
+    options.allow_all       (1,1) logical = false
+    options.retrograde_only (1,1) logical = false
+    options.no_retrograde (1,1) logical = false
 end
+
+allow_all = options.allow_all;
+retrograde_only = options.retrograde_only;
+no_retrograde = options.no_retrograde;
 
 feasible_solutions = {};
 feasible_idx = 1;
@@ -41,6 +47,15 @@ for i = 1:length(solutions)
             else
                 this_solution.direction = '+';
             end
+            
+            if retrograde_only && ~this_solution.long
+                continue
+            end
+
+            if no_retrograde && this_solution.long
+                continue
+            end
+
             if this_solution.long
                 this_solution.orbit_direction = '-';
             else
